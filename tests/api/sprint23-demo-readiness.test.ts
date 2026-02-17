@@ -6,7 +6,7 @@
  * - /api/demo/flow 6-step pipeline
  * - /.well-known/agent.json endpoint
  * - Dashboard demo pipeline integration
- * - Version bump to 0.28.0
+ * - Version bump to 0.29.0
  */
 
 jest.setTimeout(30000);
@@ -142,7 +142,7 @@ describe('Sprint 23: /api/demo/flow pipeline', () => {
     expect(res.status).toBe(200);
     expect(res.body.status).toBeDefined();
     expect(res.body.steps).toBeDefined();
-    expect(res.body.steps.length).toBe(6);
+    expect(res.body.steps.length).toBe(7);
   });
 
   test('pipeline steps have correct phases', async () => {
@@ -182,7 +182,7 @@ describe('Sprint 23: /api/demo/flow pipeline', () => {
   test('pipeline returns summary', async () => {
     const res = await request(app, 'GET', '/api/demo/flow');
     expect(res.body.summary).toBeDefined();
-    expect(res.body.summary.total_steps).toBe(6);
+    expect(res.body.summary.total_steps).toBe(7);
     expect(res.body.summary.agent_registered).toBeDefined();
     expect(res.body.summary.agents_discovered).toBeGreaterThan(0);
   });
@@ -229,9 +229,9 @@ describe('Sprint 23: /.well-known/agent.json', () => {
     expect(res.body.name).toBe('Hedera Agent Marketplace');
   });
 
-  test('agent.json has version 0.28.0', async () => {
+  test('agent.json has version 0.29.0', async () => {
     const res = await request(app, 'GET', '/.well-known/agent.json');
-    expect(res.body.version).toBe('0.28.0');
+    expect(res.body.version).toBe('0.29.0');
   });
 
   test('agent.json has protocols array with 6 standards', async () => {
@@ -290,23 +290,23 @@ describe('Sprint 23: Version bump', () => {
     ({ app } = createApp());
   });
 
-  test('health returns v0.28.0', async () => {
+  test('health returns v0.29.0', async () => {
     const res = await request(app, 'GET', '/health');
-    expect(res.body.version).toBe('0.28.0');
+    expect(res.body.version).toBe('0.29.0');
   });
 
-  test('stats returns v0.28.0', async () => {
+  test('stats returns v0.29.0', async () => {
     const res = await request(app, 'GET', '/api/stats');
-    expect(res.body.version).toBe('0.28.0');
+    expect(res.body.version).toBe('0.29.0');
   });
 
   test('test_count is 1600', async () => {
     const res = await request(app, 'GET', '/health');
-    expect(res.body.test_count).toBe(1630);
+    expect(res.body.test_count).toBe(1670);
   });
 
-  test('ready endpoint returns v0.28.0', async () => {
+  test('ready endpoint returns v0.29.0', async () => {
     const res = await request(app, 'GET', '/ready');
-    expect(res.body.version).toBe('0.28.0');
+    expect(res.body.version).toBe('0.29.0');
   });
 });

@@ -35,8 +35,8 @@ describe('Demo Recorder', () => {
     expect(recording).toBeDefined();
     expect(recording.recorded_at).toBeDefined();
     expect(recording.base_url).toBe(baseUrl);
-    expect(recording.total_steps).toBe(7);
-    expect(recording.steps.length).toBe(7);
+    expect(recording.total_steps).toBe(8);
+    expect(recording.steps.length).toBe(8);
     expect(recording.total_duration_ms).toBeGreaterThan(0);
   }, 15000);
 
@@ -62,7 +62,7 @@ describe('Demo Recorder', () => {
   test('recording steps follow expected order', async () => {
     const recording = await record(baseUrl);
     const types = recording.steps.map(s => s.type);
-    expect(types).toEqual(['seed', 'search', 'select', 'hire', 'complete', 'rate', 'points']);
+    expect(types).toEqual(['seed', 'search', 'select', 'hire', 'complete', 'rate', 'points', 'multi_protocol']);
   }, 15000);
 
   test('recording summary is populated on success', async () => {
@@ -70,6 +70,6 @@ describe('Demo Recorder', () => {
     expect(recording.summary).toBeDefined();
     expect(recording.summary?.selectedAgent).toBeDefined();
     expect(recording.summary?.pointsAwarded).toBeGreaterThan(0);
-    expect(recording.summary?.totalSteps).toBe(7);
+    expect(recording.summary?.totalSteps).toBe(8);
   }, 15000);
 });

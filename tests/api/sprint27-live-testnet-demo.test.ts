@@ -2,7 +2,7 @@
  * Sprint 27 tests — Live Testnet Demo + Quality.
  *
  * Tests:
- * - Version bump to 0.28.0
+ * - Version bump to 0.29.0
  * - /api/testnet/balance endpoint returns balance info
  * - /api/demo/flow includes hedera section with hashscan links
  * - /api/agents returns all 8 seed agents
@@ -46,19 +46,19 @@ describe('Sprint 27: Live Testnet Demo + Quality', () => {
   // Version & Stats
   // =============================================
 
-  test('GET /health returns v0.28.0', async () => {
+  test('GET /health returns v0.29.0', async () => {
     const res = await req(app, 'GET', '/health');
-    expect(res.body.version).toBe('0.28.0');
+    expect(res.body.version).toBe('0.29.0');
   });
 
-  test('GET /api/stats returns v0.28.0', async () => {
+  test('GET /api/stats returns v0.29.0', async () => {
     const res = await req(app, 'GET', '/api/stats');
-    expect(res.body.version).toBe('0.28.0');
+    expect(res.body.version).toBe('0.29.0');
   });
 
-  test('agent-card.json has version 0.28.0', async () => {
+  test('agent-card.json has version 0.29.0', async () => {
     const res = await req(app, 'GET', '/.well-known/agent-card.json');
-    expect(res.body.version).toBe('0.28.0');
+    expect(res.body.version).toBe('0.29.0');
   });
 
   // =============================================

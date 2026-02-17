@@ -36,10 +36,12 @@ import { RegistryAuth } from '../hol/registry-auth';
 import { AgentRegistration, ConsentRequest, SearchQuery, SkillManifest } from '../types';
 import { FullDemoFlow } from '../demo/full-flow';
 import { TestnetIntegration } from '../hedera/testnet-integration';
+import { TrustScoreTracker } from '../marketplace/trust-score';
+import { AnalyticsTracker } from '../marketplace/analytics';
 
 // Test count managed as a constant — updated each sprint
-const TEST_COUNT = 1630;
-const VERSION = '0.28.0';
+const TEST_COUNT = 1670;
+const VERSION = '0.29.0';
 const STANDARDS = ['HCS-10', 'HCS-11', 'HCS-14', 'HCS-19', 'HCS-20', 'HCS-26'];
 
 export function createRouter(
@@ -54,6 +56,8 @@ export function createRouter(
   connectionHandler?: ConnectionHandler,
   registryAuth?: RegistryAuth,
   testnetIntegration?: TestnetIntegration,
+  trustTracker?: TrustScoreTracker,
+  analyticsTracker?: AnalyticsTracker,
 ): Router {
   const router = Router();
   const appStartTime = startTime || Date.now();
@@ -191,13 +195,18 @@ export function createRouter(
         };
         const result = await marketplace.discoverAgents(criteria);
         res.json({
-          agents: result.agents.map(ma => ({
-            ...ma.agent,
-            verification_status: ma.verificationStatus,
-            published_skills: ma.publishedSkills.length,
-            hcs_standards: STANDARDS,
-            hedera_verified: ma.agent.hedera_verified || false,
-          })),
+          agents: result.agents.map(ma => {
+            const trust = trustTracker ? trustTracker.getTrustScore(ma.agent.agent_id, ma.agent.reputation_score) : null;
+            return {
+              ...ma.agent,
+              trust_score: trust?.trust_score ?? 0,
+              trust_level: trust?.level ?? 'new',
+              verification_status: ma.verificationStatus,
+              published_skills: ma.publishedSkills.length,
+              hcs_standards: STANDARDS,
+              hedera_verified: ma.agent.hedera_verified || false,
+            };
+          }),
           total: result.total,
           registry_topic: '0.0.demo-registry',
         });
@@ -225,8 +234,11 @@ export function createRouter(
       if (marketplace) {
         const profile = await marketplace.getAgentProfile(id);
         if (profile) {
+          const trust = trustTracker ? trustTracker.getTrustScore(profile.agent.agent_id, profile.agent.reputation_score) : null;
           res.json({
             ...profile.agent,
+            trust_score: trust?.trust_score ?? 0,
+            trust_level: trust?.level ?? 'new',
             verification_status: profile.verificationStatus,
             published_skills: profile.publishedSkills.length,
             hcs_standards: STANDARDS,
@@ -838,6 +850,27 @@ export function createRouter(
         };
       });
 
+      // Step 7: Multi-Protocol Consent Flow (HCS-10 + HCS-19)
+      await runDemoStep(7, 'multi_protocol', 'Multi-Protocol Consent Flow', async () => {
+        if (!demoAgentId) throw new Error('No agent registered');
+        const consent = await privacy.grantConsent({
+          agent_id: demoAgentId,
+          purposes: ['task_result_sharing', 'performance_analytics', 'reputation_building'],
+          retention: '6m',
+        });
+        const verified = await privacy.checkConsent(demoAgentId, 'task_result_sharing');
+        return {
+          detail: `HCS-10 message + HCS-19 consent: Granted privacy consent for ${demoAgentName} — verified: ${verified.consented}`,
+          data: {
+            consent_id: consent.id,
+            protocols_used: ['HCS-10', 'HCS-19'],
+            purposes: consent.purposes,
+            consent_verified: verified.consented,
+          },
+          hedera_proof: { mode: isLive ? 'live' : 'mock', hashscan_url: null },
+        };
+      });
+
       // Collect testnet session stats for the summary
       const testnetSession = testnetIntegration ? testnetIntegration.getSessionSummary() : null;
 
@@ -1289,13 +1322,49 @@ export function createRouter(
     });
   });
 
+  // ==========================================
+  // Analytics Endpoint
+  // ==========================================
+  router.get('/api/analytics', (_req: Request, res: Response) => {
+    if (!analyticsTracker) {
+      res.json({
+        current: { total_agents: 0, active_connections: 0, total_tasks: 0, total_consents: 0, demo_runs: 0, demo_completions: 0, demo_completion_rate: 0 },
+        protocol_usage: [],
+        history: [],
+        timestamp: new Date().toISOString(),
+      });
+      return;
+    }
+    res.json(analyticsTracker.getSummary());
+  });
+
+  // ==========================================
+  // Trust Score Endpoint
+  // ==========================================
+  router.get('/api/agents/:id/trust', async (req: Request, res: Response) => {
+    if (!trustTracker) {
+      res.json({ trust_score: 0, factors: { age_score: 0, connection_score: 0, task_score: 0, privacy_score: 0 }, level: 'new' });
+      return;
+    }
+    const id = String(req.params.id);
+    let reputationScore = 0;
+    if (marketplace) {
+      const profile = await marketplace.getAgentProfile(id);
+      if (profile) {
+        reputationScore = profile.agent.reputation_score;
+      }
+    }
+    const trustResult = trustTracker.getTrustScore(id, reputationScore);
+    res.json(trustResult);
+  });
+
   // A2A agent card — used by other agents and judges for discovery
   const agentCardPayload = {
     name: 'Hedera Agent Marketplace',
     version: VERSION,
     description: 'Decentralized agent marketplace on Hedera — agent registration, discovery, payments, and reputation using HCS-10/11/14/19/20/26 standards',
     url: 'https://hedera-apex.opspawn.com',
-    capabilities: ['agent-registration', 'agent-discovery', 'privacy-consent', 'skill-publishing', 'reputation-points', 'hcs-10-connections', 'chat-relay', 'agent-connections', 'full-flow-demo', 'demo-recording', 'natural-language-chat'],
+    capabilities: ['agent-registration', 'agent-discovery', 'privacy-consent', 'skill-publishing', 'reputation-points', 'hcs-10-connections', 'chat-relay', 'agent-connections', 'full-flow-demo', 'demo-recording', 'natural-language-chat', 'trust-scores', 'analytics-dashboard'],
     protocols: ['hcs-10', 'hcs-11', 'hcs-14', 'hcs-19', 'hcs-20', 'hcs-26'],
     endpoints: {
       health: '/health',
@@ -1307,6 +1376,8 @@ export function createRouter(
       points: '/api/v1/points/leaderboard',
       skills: '/api/skills/search',
       connections: '/api/connections',
+      analytics: '/api/analytics',
+      trust: '/api/agents/:id/trust',
     },
     contact: {
       github: 'https://github.com/opspawn',

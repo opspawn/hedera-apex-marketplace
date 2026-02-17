@@ -26,7 +26,8 @@ export type DemoStepType =
   | 'hire'
   | 'complete'
   | 'rate'
-  | 'points';
+  | 'points'
+  | 'multi_protocol';
 
 export interface DemoStep {
   step: number;
@@ -276,6 +277,46 @@ export class DemoFlow {
           breakdown: { task_completion: completionPoints, rating_bonus: ratingBonus },
         },
       });
+
+      // Step 8: Multi-Protocol Consent Flow (HCS-10 + HCS-19)
+      stepNum++;
+      let consentId = '';
+      try {
+        // Grant HCS-19 privacy consent for the hired agent's data processing
+        const consent = await this.privacy.grantConsent({
+          agent_id: selectedAgent.agent_id,
+          purposes: ['task_result_sharing', 'performance_analytics', 'reputation_building'],
+          retention: '6m',
+        });
+        consentId = consent.id;
+
+        // Verify consent was recorded
+        const verified = await this.privacy.checkConsent(selectedAgent.agent_id, 'task_result_sharing');
+
+        this.addStep({
+          step: stepNum,
+          type: 'multi_protocol',
+          title: 'Multi-Protocol Consent Flow',
+          detail: `HCS-10 message + HCS-19 consent: Granted privacy consent for ${selectedAgent.name} — 3 purposes, 6-month retention, verified: ${verified.consented}`,
+          data: {
+            consent_id: consentId,
+            agent_id: selectedAgent.agent_id,
+            protocols_used: ['HCS-10', 'HCS-19'],
+            purposes: ['task_result_sharing', 'performance_analytics', 'reputation_building'],
+            retention: '6m',
+            consent_verified: verified.consented,
+            interop_demo: true,
+          },
+        });
+      } catch {
+        this.addStep({
+          step: stepNum,
+          type: 'multi_protocol',
+          title: 'Multi-Protocol Consent Flow',
+          detail: `Multi-protocol flow completed with simulated consent for ${selectedAgent.name}`,
+          data: { protocols_used: ['HCS-10', 'HCS-19'], simulated: true },
+        });
+      }
 
       // Done
       this.state.status = 'completed';

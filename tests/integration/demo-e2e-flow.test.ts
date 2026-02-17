@@ -46,7 +46,7 @@ describe('End-to-End Demo Flow: seed → register → search → hire → pay �
     // Phase 1: Verify initial state
     const healthBefore = await request(app, 'GET', '/health');
     expect(healthBefore.status).toBe(200);
-    expect(healthBefore.body.version).toBe('0.28.0');
+    expect(healthBefore.body.version).toBe('0.29.0');
     expect(healthBefore.body.agents).toBe(0);
 
     // Phase 2: Run demo to seed agents
@@ -60,11 +60,11 @@ describe('End-to-End Demo Flow: seed → register → search → hire → pay �
     // Phase 3: Verify demo completed
     const demoStatus = await request(app, 'GET', '/api/demo/status');
     expect(demoStatus.body.status).toBe('completed');
-    expect(demoStatus.body.version).toBe('0.28.0');
+    expect(demoStatus.body.version).toBe('0.29.0');
 
     // Phase 4: Verify steps endpoint
     const demoSteps = await request(app, 'GET', '/api/demo/steps');
-    expect(demoSteps.body.total_steps).toBe(7);
+    expect(demoSteps.body.total_steps).toBe(8);
     expect(demoSteps.body.summary).toBeDefined();
     expect(demoSteps.body.summary.agentsSeeded).toBe(8);
 
@@ -114,7 +114,7 @@ describe('End-to-End Demo Flow: seed → register → search → hire → pay �
     // Phase 11: Verify A2A discovery card
     const agentCard = await request(app, 'GET', '/.well-known/agent-card.json');
     expect(agentCard.status).toBe(200);
-    expect(agentCard.body.version).toBe('0.28.0');
+    expect(agentCard.body.version).toBe('0.29.0');
     expect(agentCard.body.protocols).toContain('hcs-10');
     expect(agentCard.body.protocols.length).toBe(6);
   });

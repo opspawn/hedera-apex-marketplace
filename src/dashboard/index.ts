@@ -565,7 +565,7 @@ function getDashboardHTML(): string {
       <div class="logo" aria-hidden="true">H</div>
       <div>
         <h1><span>Hedera</span> Agent Marketplace</h1>
-        <div style="font-size:0.7rem; color:#6a7a9a; margin-top:0.15rem;">v0.28.0 &middot; <span id="testnet-mode" style="color:#00c853;">Testnet</span> &middot; Account <span style="color:#00d4ff;">0.0.7854018</span></div>
+        <div style="font-size:0.7rem; color:#6a7a9a; margin-top:0.15rem;">v0.29.0 &middot; <span id="testnet-mode" style="color:#00c853;">Testnet</span> &middot; Account <span style="color:#00d4ff;">0.0.7854018</span></div>
       </div>
     </div>
     <div class="header-right" aria-label="Supported HCS Standards">
@@ -600,6 +600,7 @@ function getDashboardHTML(): string {
     <div class="nav-tab" data-view="hol-status" role="tab" tabindex="0" aria-selected="false" aria-controls="view-hol-status" style="color:#a855f7;">HOL Registry</div>
     <div class="nav-tab" data-view="connections" role="tab" tabindex="0" aria-selected="false" aria-controls="view-connections" style="color:#f59e0b;">Connections</div>
     <div class="nav-tab" data-view="demo" role="tab" tabindex="0" aria-selected="false" aria-controls="view-demo" style="color:#00c853;">Live Demo</div>
+    <div class="nav-tab" data-view="analytics" role="tab" tabindex="0" aria-selected="false" aria-controls="view-analytics" style="color:#f59e0b;">Analytics</div>
     <a href="/chat" class="nav-tab" style="color:#00d4ff; text-decoration:none;" title="Chat with Hedera Agent">&#x1F4AC; Agent Chat</a>
   </nav>
 
@@ -877,6 +878,59 @@ function getDashboardHTML(): string {
       </div>
     </div>
 
+    <!-- Analytics View -->
+    <div class="view" id="view-analytics" role="tabpanel" aria-labelledby="tab-analytics">
+      <h2 style="color:#fff; margin-bottom:1rem;">Marketplace Analytics</h2>
+      <div class="stats" id="analytics-stats">
+        <div class="stat-card">
+          <span class="stat-icon">&#x1F4CA;</span>
+          <div class="value" id="analytics-agents">0</div>
+          <div class="label">Total Agents</div>
+        </div>
+        <div class="stat-card">
+          <span class="stat-icon">&#x1F517;</span>
+          <div class="value" id="analytics-connections">0</div>
+          <div class="label">Active Connections</div>
+        </div>
+        <div class="stat-card">
+          <span class="stat-icon">&#x2705;</span>
+          <div class="value" id="analytics-tasks">0</div>
+          <div class="label">Total Tasks</div>
+        </div>
+        <div class="stat-card">
+          <span class="stat-icon">&#x1F3AF;</span>
+          <div class="value" id="analytics-demo-rate">0%</div>
+          <div class="label">Demo Completion Rate</div>
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; margin-top:1.5rem;">
+        <!-- Protocol Usage Chart -->
+        <div style="background:#111827; border-radius:12px; padding:1.5rem; border:1px solid #1e2a4a;">
+          <h3 style="color:#fff; margin-bottom:1rem; font-size:1rem;">Protocol Usage</h3>
+          <div id="protocol-chart"></div>
+        </div>
+        <!-- Demo Stats -->
+        <div style="background:#111827; border-radius:12px; padding:1.5rem; border:1px solid #1e2a4a;">
+          <h3 style="color:#fff; margin-bottom:1rem; font-size:1rem;">Demo Flow Stats</h3>
+          <div id="demo-stats-detail">
+            <div style="display:flex; justify-content:space-between; padding:0.5rem 0; border-bottom:1px solid #1e2a4a;">
+              <span style="color:#8892b0;">Demo Runs</span>
+              <span style="color:#00d4ff; font-weight:600;" id="analytics-demo-runs">0</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; padding:0.5rem 0; border-bottom:1px solid #1e2a4a;">
+              <span style="color:#8892b0;">Completions</span>
+              <span style="color:#00c853; font-weight:600;" id="analytics-demo-completions">0</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; padding:0.5rem 0; border-bottom:1px solid #1e2a4a;">
+              <span style="color:#8892b0;">Total Consents (HCS-19)</span>
+              <span style="color:#a855f7; font-weight:600;" id="analytics-consents">0</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
 
   <!-- Agent Detail Modal -->
@@ -930,6 +984,38 @@ function getDashboardHTML(): string {
       tab.setAttribute('aria-selected', 'true');
       document.getElementById('view-' + tab.dataset.view).classList.add('active');
       if (tab.dataset.view === 'connections') { loadConnections(); }
+      if (tab.dataset.view === 'analytics') { loadAnalytics(); }
+    }
+
+    // Load analytics data
+    async function loadAnalytics() {
+      try {
+        const resp = await fetch('/api/analytics');
+        const data = await resp.json();
+        var c = data.current || {};
+        document.getElementById('analytics-agents').textContent = c.total_agents || 0;
+        document.getElementById('analytics-connections').textContent = c.active_connections || 0;
+        document.getElementById('analytics-tasks').textContent = c.total_tasks || 0;
+        document.getElementById('analytics-demo-rate').textContent = (c.demo_completion_rate || 0) + '%';
+        document.getElementById('analytics-demo-runs').textContent = c.demo_runs || 0;
+        document.getElementById('analytics-demo-completions').textContent = c.demo_completions || 0;
+        document.getElementById('analytics-consents').textContent = c.total_consents || 0;
+        // Render protocol usage as CSS bar chart
+        var protocols = data.protocol_usage || [];
+        var chartHtml = '';
+        var colors = ['#00d4ff', '#a855f7', '#00c853', '#ffaa00', '#ff6b6b', '#4ecdc4'];
+        protocols.forEach(function(p, i) {
+          var color = colors[i % colors.length];
+          chartHtml += '<div style="margin-bottom:0.75rem;">';
+          chartHtml += '<div style="display:flex; justify-content:space-between; margin-bottom:0.25rem;"><span style="color:#e0e0e0; font-size:0.85rem;">' + p.protocol + '</span><span style="color:' + color + '; font-size:0.8rem;">' + p.agent_count + ' agents (' + p.percentage + '%)</span></div>';
+          chartHtml += '<div style="height:8px; background:#1e2a4a; border-radius:4px; overflow:hidden;"><div style="height:100%; width:' + Math.max(5, p.percentage) + '%; background:' + color + '; border-radius:4px; transition:width 0.5s;"></div></div>';
+          chartHtml += '</div>';
+        });
+        if (!chartHtml) chartHtml = '<p style="color:#6a7a9a; font-size:0.85rem;">No protocol data yet. Register agents to see usage breakdown.</p>';
+        document.getElementById('protocol-chart').innerHTML = chartHtml;
+      } catch (e) {
+        console.error('Failed to load analytics:', e);
+      }
     }
 
     // Show skeleton loading
@@ -1003,6 +1089,8 @@ function getDashboardHTML(): string {
               <span class="badge badge-\${a.status || 'offline'}">\${a.status || 'offline'}</span>
               \${a.hedera_verified ? '<span class="badge" style="background:rgba(119,86,236,0.15);color:#7b5fec;border:1px solid rgba(119,86,236,0.3);">&#x2713; Verified on Hedera</span>' : ''}
               <span class="agent-reputation">\${'\u2B50'} \${a.reputation_score || 0}</span>
+              \${a.trust_score !== undefined ? '<span style="font-size:0.75rem; padding:0.15rem 0.5rem; border-radius:6px; background:rgba(0,200,83,0.1); border:1px solid rgba(0,200,83,0.3); color:#00c853;">Trust: ' + a.trust_score + '</span>' : ''}
+              \${a.trust_level ? '<span style="font-size:0.7rem; padding:0.12rem 0.4rem; border-radius:4px; background:rgba(168,85,247,0.1); border:1px solid rgba(168,85,247,0.25); color:#a855f7;">' + a.trust_level + '</span>' : ''}
               \${ma.points ? '<span style="font-size:0.8rem; color:#a855f7;">' + ma.points.total_points + ' pts</span>' : ''}
             </div>
             <div>\${skills.map(function(s, i) { return '<span class="skill-tag skill-tag-' + (i % 6) + '">' + esc(s.name) + '</span>'; }).join('')}</div>
@@ -1143,6 +1231,7 @@ function getDashboardHTML(): string {
             <div class="modal-field"><span class="label">Inbound Topic</span><span class="value">\${esc(a.inbound_topic || 'N/A')}</span></div>
             <div class="modal-field"><span class="label">Outbound Topic</span><span class="value">\${esc(a.outbound_topic || 'N/A')}</span></div>
             <div class="modal-field"><span class="label">Reputation</span><span class="value">\${a.reputation_score || 0}</span></div>
+            <div class="modal-field"><span class="label">Trust Score</span><span class="value" style="color:#00c853;">\${a.trust_score ?? 'N/A'} \${a.trust_level ? '(' + a.trust_level + ')' : ''}</span></div>
           </div>
           <button class="btn btn-hire" style="width:100%; margin-top:1rem; padding:0.8rem;" onclick="closeModal(); openHireModal('\${a.agent_id}')">Hire This Agent</button>\`;
       } catch (e) {

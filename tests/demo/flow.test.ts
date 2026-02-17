@@ -45,7 +45,7 @@ describe('DemoFlow', () => {
       const state = await flow.run();
 
       expect(state.status).toBe('completed');
-      expect(state.steps.length).toBe(7);
+      expect(state.steps.length).toBe(8);
       expect(state.startedAt).toBeDefined();
       expect(state.completedAt).toBeDefined();
       expect(state.summary).toBeDefined();
@@ -57,7 +57,7 @@ describe('DemoFlow', () => {
       const state = await flow.run();
 
       const types = state.steps.map(s => s.type);
-      expect(types).toEqual(['seed', 'search', 'select', 'hire', 'complete', 'rate', 'points']);
+      expect(types).toEqual(['seed', 'search', 'select', 'hire', 'complete', 'rate', 'points', 'multi_protocol']);
     });
 
     it('should seed 8 demo agents', async () => {
@@ -121,7 +121,7 @@ describe('DemoFlow', () => {
       expect(state.summary!.selectedAgent).toBeDefined();
       expect(state.summary!.hireTaskId).toBeDefined();
       expect(state.summary!.pointsAwarded).toBe(150);
-      expect(state.summary!.totalSteps).toBe(7);
+      expect(state.summary!.totalSteps).toBe(8);
     });
 
     it('should call onStep callback for each step', async () => {
@@ -130,7 +130,7 @@ describe('DemoFlow', () => {
       const flow = new DemoFlow(marketplace, hcs19, hcs20, (step) => steps.push(step));
       await flow.run();
 
-      expect(steps.length).toBe(7);
+      expect(steps.length).toBe(8);
       expect(steps[0].type).toBe('seed');
       expect(steps[6].type).toBe('points');
     });
@@ -182,7 +182,7 @@ describe('DemoFlow', () => {
       const state = await flow.run();
 
       const stepNumbers = state.steps.map(s => s.step);
-      expect(stepNumbers).toEqual([1, 2, 3, 4, 5, 6, 7]);
+      expect(stepNumbers).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
     });
   });
 

@@ -58,7 +58,7 @@ describe('Sprint 15: Demo Flow Recovery', () => {
     const flow = new DemoFlow(marketplace, hcs19, hcs20);
     const result = await flow.run();
     expect(result.status).toBe('completed');
-    expect(result.steps.length).toBe(7);
+    expect(result.steps.length).toBe(8);
   });
 
   test('demo completes in under 30 seconds', async () => {
@@ -88,7 +88,7 @@ describe('Sprint 15: Demo Flow Recovery', () => {
     const flow = new DemoFlow(marketplace, hcs19, hcs20);
     const result = await flow.run();
     const types = result.steps.map(s => s.type);
-    expect(types).toEqual(['seed', 'search', 'select', 'hire', 'complete', 'rate', 'points']);
+    expect(types).toEqual(['seed', 'search', 'select', 'hire', 'complete', 'rate', 'points', 'multi_protocol']);
   });
 
   test('summary is populated on completion', async () => {
@@ -97,7 +97,7 @@ describe('Sprint 15: Demo Flow Recovery', () => {
     const result = await flow.run();
     expect(result.summary).toBeDefined();
     expect(result.summary!.agentsSeeded).toBe(8);
-    expect(result.summary!.totalSteps).toBe(7);
+    expect(result.summary!.totalSteps).toBe(8);
     expect(result.summary!.pointsAwarded).toBe(150);
     expect(result.summary!.selectedAgent).toBeTruthy();
     expect(result.summary!.hireTaskId).toBeTruthy();
@@ -134,7 +134,7 @@ describe('Sprint 15: Demo Flow Recovery', () => {
       stepsReceived.push(step.step);
     });
     await flow.run();
-    expect(stepsReceived).toEqual([1, 2, 3, 4, 5, 6, 7]);
+    expect(stepsReceived).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
   });
 
   test('points are correctly awarded during demo', async () => {

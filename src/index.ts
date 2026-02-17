@@ -27,6 +27,8 @@ import { RegistryBroker } from './hol/registry-broker';
 import { ConnectionHandler } from './hol/connection-handler';
 import { RegistryAuth } from './hol/registry-auth';
 import { createChatRouter } from './chat';
+import { TrustScoreTracker } from './marketplace/trust-score';
+import { AnalyticsTracker } from './marketplace/analytics';
 
 const START_TIME = Date.now();
 
@@ -91,6 +93,10 @@ export function createApp() {
   const registry = new AgentRegistry(hcs10, hcs11, hcs14);
   const marketplace = new MarketplaceService(hcs10, hcs11, hcs14, hcs19Identity, hcs26);
 
+  // Initialize trust score tracker and analytics
+  const trustTracker = new TrustScoreTracker();
+  const analyticsTracker = new AnalyticsTracker();
+
   // Initialize demo flow
   const demoFlow = new DemoFlow(marketplace, hcs19, hcs20);
 
@@ -121,7 +127,7 @@ export function createApp() {
   app.use(express.json());
 
   // Mount routes
-  app.use(createRouter(registry, hcs19, hcs26, marketplace, hcs20, START_TIME, demoFlow, registryBroker, connectionHandler, registryAuth, testnetIntegration));
+  app.use(createRouter(registry, hcs19, hcs26, marketplace, hcs20, START_TIME, demoFlow, registryBroker, connectionHandler, registryAuth, testnetIntegration, trustTracker, analyticsTracker));
   app.use(createChatRouter({
     chatAgentConfig: {
       registryBroker,
@@ -130,7 +136,7 @@ export function createApp() {
   }));
   app.use(createDashboardRouter());
 
-  return { app, config, registry, marketplace, hcs10, hcs11, hcs14, hcs19, hcs19Identity, hcs26, hcs20, demoFlow, testnetIntegration, registryBroker, connectionHandler, registryAuth };
+  return { app, config, registry, marketplace, hcs10, hcs11, hcs14, hcs19, hcs19Identity, hcs26, hcs20, demoFlow, testnetIntegration, registryBroker, connectionHandler, registryAuth, trustTracker, analyticsTracker };
 }
 
 /**

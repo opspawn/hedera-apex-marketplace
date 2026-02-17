@@ -68,7 +68,7 @@ describe('DemoFlow Error Boundaries', () => {
       expect(state.status).toBe('completed');
 
       // All 7 steps should be present
-      expect(state.steps.length).toBe(7);
+      expect(state.steps.length).toBe(8);
       for (const step of state.steps) {
         expect(step.title).toBeDefined();
         expect(step.detail).toBeDefined();
@@ -179,7 +179,7 @@ describe('DemoFlow Error Boundaries', () => {
       expect(state.summary!.selectedAgent).toBeTruthy();
       expect(state.summary!.hireTaskId).toBeTruthy();
       expect(state.summary!.pointsAwarded).toBeGreaterThan(0);
-      expect(state.summary!.totalSteps).toBe(7);
+      expect(state.summary!.totalSteps).toBe(8);
     });
 
     it('should not have summary when status is idle', () => {

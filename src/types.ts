@@ -44,6 +44,8 @@ export interface RegisteredAgent extends AgentRegistration {
   outbound_topic: string;
   profile_topic: string;
   reputation_score: number;
+  trust_score?: number;
+  trust_level?: 'new' | 'basic' | 'trusted' | 'verified' | 'elite';
   status: 'online' | 'offline' | 'suspended';
   registered_at: string;
   hedera_verified: boolean;

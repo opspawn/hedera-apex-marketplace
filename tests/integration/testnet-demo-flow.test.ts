@@ -47,7 +47,7 @@ describe('Demo Flow with Testnet Integration', () => {
     const state = await flow.run();
 
     expect(state.status).toBe('completed');
-    expect(state.steps.length).toBe(7);
+    expect(state.steps.length).toBe(8);
 
     // Testnet should have recorded topic creations for agent registration
     const summary = testnet.getSessionSummary();
