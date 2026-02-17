@@ -40,8 +40,8 @@ import { TrustScoreTracker } from '../marketplace/trust-score';
 import { AnalyticsTracker } from '../marketplace/analytics';
 
 // Test count managed as a constant — updated each sprint
-const TEST_COUNT = 1880;
-const VERSION = '0.31.0';
+const TEST_COUNT = 1950;
+const VERSION = '0.32.0';
 const STANDARDS = ['HCS-10', 'HCS-11', 'HCS-14', 'HCS-19', 'HCS-20', 'HCS-26'];
 
 export function createRouter(

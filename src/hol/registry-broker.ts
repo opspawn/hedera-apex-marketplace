@@ -86,6 +86,9 @@ export interface BrokerAgentEntry {
   endpoint?: string;
   capabilities?: string[];
   score?: number;
+  trust_score?: number;
+  trust_level?: string;
+  reputation_score?: number;
 }
 
 export interface VectorSearchQuery {

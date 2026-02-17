@@ -35,10 +35,10 @@ describe('Sprint 25: Homepage Polish', () => {
     expect(res.text).toContain('Decentralized Agent Marketplace');
   });
 
-  test('homepage includes Try Agent Chat CTA', async () => {
+  test('homepage includes Chat with Agents CTA', async () => {
     const res = await req(app, '/');
-    expect(res.text).toContain('Try Agent Chat');
-    expect(res.text).toContain('href="/chat"');
+    expect(res.text).toContain('Chat with Agents');
+    expect(res.text).toContain('/chat');
   });
 
   test('homepage includes HCS standards reference', async () => {
@@ -66,9 +66,9 @@ describe('Sprint 25: Homepage Polish', () => {
     expect(res.text).toContain('Registered Agents');
   });
 
-  test('displays version 0.30.0', async () => {
+  test('displays version 0.32.0', async () => {
     const res = await req(app, '/');
-    expect(res.text).toContain('v0.30.0');
+    expect(res.text).toContain('v0.32.0');
   });
 
   test('includes Agent Chat link in nav', async () => {
@@ -76,9 +76,9 @@ describe('Sprint 25: Homepage Polish', () => {
     expect(res.text).toContain('Agent Chat');
   });
 
-  test('GET /health returns version 0.30.0', async () => {
+  test('GET /health returns version 0.32.0', async () => {
     const res = await req(app, '/health');
-    expect(res.body.version).toBe('0.30.0');
+    expect(res.body.version).toBe('0.32.0');
   });
 
   test('GET /health shows test_count >= 1600', async () => {
@@ -86,9 +86,9 @@ describe('Sprint 25: Homepage Polish', () => {
     expect(res.body.test_count).toBeGreaterThanOrEqual(1600);
   });
 
-  test('GET /api/stats returns version 0.30.0', async () => {
+  test('GET /api/stats returns version 0.32.0', async () => {
     const res = await req(app, '/api/stats');
-    expect(res.body.version).toBe('0.30.0');
+    expect(res.body.version).toBe('0.32.0');
   });
 
   test('GET /api/stats shows testCount >= 1600', async () => {

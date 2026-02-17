@@ -565,7 +565,7 @@ function getDashboardHTML(): string {
       <div class="logo" aria-hidden="true">H</div>
       <div>
         <h1><span>Hedera</span> Agent Marketplace</h1>
-        <div style="font-size:0.7rem; color:#6a7a9a; margin-top:0.15rem;">v0.30.0 &middot; <span id="testnet-mode" style="color:#00c853;">Testnet</span> &middot; Account <span style="color:#00d4ff;">0.0.7854018</span></div>
+        <div style="font-size:0.7rem; color:#6a7a9a; margin-top:0.15rem;">v0.32.0 &middot; <span id="testnet-mode" style="color:#00c853;">Testnet</span> &middot; Account <span style="color:#00d4ff;">0.0.7854018</span></div>
       </div>
     </div>
     <div class="header-right" aria-label="Supported HCS Standards">
@@ -607,13 +607,25 @@ function getDashboardHTML(): string {
 
   <div class="container">
 
-    <!-- Hero Banner with Try Chat CTA -->
-    <div style="background:linear-gradient(135deg, rgba(0,212,255,0.08) 0%, rgba(168,85,247,0.08) 50%, rgba(0,200,83,0.06) 100%); border:1px solid rgba(0,212,255,0.2); border-radius:14px; padding:1.5rem 2rem; margin-bottom:1.5rem; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:1rem; animation:fadeInUp 0.4s ease;">
-      <div>
-        <h2 style="color:#fff; font-size:1.2rem; margin-bottom:0.35rem;">Decentralized Agent Marketplace</h2>
-        <p style="color:#8892b0; font-size:0.85rem;">Register, discover, and connect AI agents using 6 Hedera HCS standards. Chat in natural language.</p>
+    <!-- Hero Banner with Stats & CTAs -->
+    <div style="background:linear-gradient(135deg, rgba(0,212,255,0.08) 0%, rgba(168,85,247,0.08) 50%, rgba(0,200,83,0.06) 100%); border:1px solid rgba(0,212,255,0.2); border-radius:14px; padding:1.75rem 2rem; margin-bottom:1.5rem; animation:fadeInUp 0.4s ease;">
+      <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:1rem; margin-bottom:1rem;">
+        <div>
+          <h2 style="color:#fff; font-size:1.3rem; margin-bottom:0.4rem;">Decentralized Agent Marketplace on Hedera</h2>
+          <p style="color:#8892b0; font-size:0.85rem; line-height:1.5;">Register, discover, and connect AI agents using 6 Hedera Consensus Service standards.<br>Full natural language chat interface with trust scoring and on-chain verification.</p>
+        </div>
+        <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
+          <a href="/chat" style="display:inline-flex; align-items:center; gap:0.5rem; padding:0.75rem 1.5rem; background:linear-gradient(135deg,#0088cc,#00aaff); color:#fff; text-decoration:none; border-radius:10px; font-weight:600; font-size:0.95rem; transition:all 0.25s; box-shadow:0 4px 16px rgba(0,136,204,0.3);" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 24px rgba(0,136,204,0.4)';" onmouseout="this.style.transform='';this.style.boxShadow='0 4px 16px rgba(0,136,204,0.3)';">&#x1F4AC; Chat with Agents</a>
+          <a href="#" onclick="switchTab('register');return false;" style="display:inline-flex; align-items:center; gap:0.5rem; padding:0.75rem 1.5rem; background:rgba(168,85,247,0.15); border:1px solid rgba(168,85,247,0.3); color:#c084fc; text-decoration:none; border-radius:10px; font-weight:600; font-size:0.95rem; transition:all 0.25s;" onmouseover="this.style.background='rgba(168,85,247,0.25)';" onmouseout="this.style.background='rgba(168,85,247,0.15)';">&#x2795; Register Agent</a>
+        </div>
       </div>
-      <a href="/chat" style="display:inline-flex; align-items:center; gap:0.5rem; padding:0.75rem 1.5rem; background:linear-gradient(135deg,#0088cc,#00aaff); color:#fff; text-decoration:none; border-radius:10px; font-weight:600; font-size:0.95rem; transition:all 0.25s; box-shadow:0 4px 16px rgba(0,136,204,0.3);" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 24px rgba(0,136,204,0.4)';" onmouseout="this.style.transform='';this.style.boxShadow='0 4px 16px rgba(0,136,204,0.3)';">&#x1F4AC; Try Agent Chat</a>
+      <div style="display:flex; gap:1.5rem; flex-wrap:wrap; font-size:0.8rem;">
+        <div style="display:flex; align-items:center; gap:0.4rem;"><span style="color:#00c853; font-weight:700;" id="hero-test-count">1950+</span><span style="color:#6a7a9a;">Tests Passing</span></div>
+        <div style="display:flex; align-items:center; gap:0.4rem;"><span style="color:#00d4ff; font-weight:700;">6</span><span style="color:#6a7a9a;">HCS Standards</span></div>
+        <div style="display:flex; align-items:center; gap:0.4rem;"><span style="color:#a855f7; font-weight:700;">Live</span><span style="color:#6a7a9a;">Hedera Testnet</span></div>
+        <div style="display:flex; align-items:center; gap:0.4rem;"><span style="color:#ffaa00; font-weight:700;">12</span><span style="color:#6a7a9a;">Chat Tools</span></div>
+        <div style="display:flex; align-items:center; gap:0.4rem;"><span style="color:#f87171; font-weight:700;">Trust</span><span style="color:#6a7a9a;">Score Analytics</span></div>
+      </div>
     </div>
 
     <!-- Stats Panel -->

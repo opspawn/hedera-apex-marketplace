@@ -164,6 +164,20 @@ function detectIntent(message: string): DetectedIntent {
     return { tool: 'check_messages', args: {}, confidence: 0.85 };
   }
 
+  // Trust score intent
+  if (
+    /\b(trust)\b.*\b(score|level|rating)\b/.test(lower) ||
+    /\b(score|rating)\b.*\b(trust)\b/.test(lower) ||
+    /\bshow\b.*\btrust\b/.test(lower)
+  ) {
+    const agentMatch = lower.match(/(?:for|of|about)\s+([\w.-]+)/);
+    return {
+      tool: 'get_trust_scores',
+      args: { agentId: agentMatch ? agentMatch[1] : '' },
+      confidence: 0.9,
+    };
+  }
+
   // Feedback intent
   if (
     /\b(feedback|rating|review|reputation|score)\b/.test(lower)
@@ -349,6 +363,12 @@ export class ChatAgent {
           response = result.message;
           break;
         }
+        case 'get_trust_scores': {
+          const result = await this.executeGetTrustScores(intent.args);
+          actions.push({ tool: 'get_trust_scores', args: intent.args, result });
+          response = result.message;
+          break;
+        }
         default: {
           response = this.getHelpResponse();
           break;
@@ -402,6 +422,7 @@ export class ChatAgent {
       'relay_message',
       'get_relay_history',
       'list_skills',
+      'get_trust_scores',
     ];
   }
 
@@ -721,6 +742,31 @@ export class ChatAgent {
     };
   }
 
+  private async executeGetTrustScores(args: Record<string, unknown>): Promise<ToolResult> {
+    const result = await this.broker.searchAgents({ limit: 10 });
+    if (result.agents.length === 0) {
+      return {
+        success: true,
+        data: { agents: [] },
+        message: 'No agents found in the marketplace. Register an agent to get started!',
+      };
+    }
+
+    const agentList = result.agents
+      .map((a: BrokerAgentEntry, i: number) => {
+        const trust = a.trust_score ?? a.reputation_score ?? 'N/A';
+        const level = a.trust_level || 'unrated';
+        return `${i + 1}. **${a.display_name}** — Trust: ${trust}/100 (${level})`;
+      })
+      .join('\n');
+
+    return {
+      success: true,
+      data: { agents: result.agents, total: result.total },
+      message: `Trust scores for ${result.total} agent(s):\n${agentList}\n\nTrust levels: new (0-20) → basic (21-40) → trusted (41-60) → verified (61-80) → elite (81-100)`,
+    };
+  }
+
   private getHelpResponse(): string {
     return `I'm the Hedera Agent Marketplace assistant. Here's what I can help you with:
 
@@ -751,6 +797,10 @@ export class ChatAgent {
 **Messaging**
 - "Send a message to the analyst: review this dataset"
 - "Check my messages"
+
+**Trust Scores**
+- "Show trust scores for available agents"
+- "What's the trust score for agent-001?"
 
 **Feedback & Ratings**
 - "Show feedback for agent-001"

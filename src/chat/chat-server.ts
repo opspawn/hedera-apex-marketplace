@@ -390,6 +390,22 @@ function getChatHTML(): string {
     /* Error badge */
     .error-badge { display: inline-block; background: rgba(255, 68, 68, 0.1); border: 1px solid rgba(255, 68, 68, 0.3); color: #ff6666; padding: 0.25rem 0.5rem; border-radius: 6px; font-size: 0.75rem; margin-top: 0.3rem; }
 
+    /* Agent cards in chat responses */
+    .chat-agent-cards { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.75rem; }
+    .chat-agent-card { background: linear-gradient(135deg, #0d1528, #111827); border: 1px solid #1e2a4a; border-radius: 10px; padding: 0.75rem 1rem; transition: all 0.2s; }
+    .chat-agent-card:hover { border-color: rgba(0, 212, 255, 0.4); transform: translateX(4px); }
+    .chat-agent-card-header { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem; }
+    .chat-agent-card-avatar { width: 28px; height: 28px; border-radius: 7px; background: linear-gradient(135deg, rgba(0, 212, 255, 0.2), rgba(168, 85, 247, 0.2)); display: flex; align-items: center; justify-content: center; font-size: 0.8rem; flex-shrink: 0; }
+    .chat-agent-card-name { font-weight: 600; color: #fff; font-size: 0.85rem; }
+    .chat-agent-card-score { font-size: 0.7rem; color: #ffaa00; margin-left: auto; }
+    .chat-agent-card-bio { color: #8892b0; font-size: 0.78rem; line-height: 1.4; }
+    .chat-agent-card-tags { display: flex; flex-wrap: wrap; gap: 0.25rem; margin-top: 0.35rem; }
+    .chat-agent-card-tag { padding: 0.1rem 0.5rem; border-radius: 10px; font-size: 0.65rem; background: rgba(0, 212, 255, 0.1); color: #00d4ff; border: 1px solid rgba(0, 212, 255, 0.2); }
+
+    /* Empty state for chat */
+    .chat-empty { text-align: center; padding: 2rem; color: #4a5a7a; animation: fadeIn 0.3s ease; }
+    .chat-empty-icon { font-size: 2rem; margin-bottom: 0.5rem; opacity: 0.5; }
+
     /* Loading indicator */
     .typing-indicator { display: flex; gap: 0.75rem; align-self: flex-start; max-width: 80%; animation: fadeInUp 0.3s ease; }
     .typing-dots { display: flex; gap: 4px; padding: 0.85rem 1.1rem; background: #111827; border: 1px solid #1e2a4a; border-radius: 12px; border-bottom-left-radius: 4px; }
@@ -456,20 +472,28 @@ function getChatHTML(): string {
       <p>Chat with the marketplace agent using natural language &mdash; register agents, discover capabilities, connect via HCS-10, and exchange messages.</p>
       <div class="suggestions" id="suggestions">
         <div class="suggestion" onclick="sendSuggestion(this)">
-          <div class="suggestion-label">Register</div>
-          Register me as a data analyst agent
-        </div>
-        <div class="suggestion" onclick="sendSuggestion(this)">
           <div class="suggestion-label">Discover</div>
-          Find agents that can analyze financial data
+          Find me an AI agent for data analysis
         </div>
         <div class="suggestion" onclick="sendSuggestion(this)">
-          <div class="suggestion-label">Connect</div>
-          Connect to agent 0.0.12345
+          <div class="suggestion-label">Register</div>
+          Register a new agent
+        </div>
+        <div class="suggestion" onclick="sendSuggestion(this)">
+          <div class="suggestion-label">Trust</div>
+          Show trust scores for available agents
+        </div>
+        <div class="suggestion" onclick="sendSuggestion(this)">
+          <div class="suggestion-label">Search</div>
+          Search for code review agents
         </div>
         <div class="suggestion" onclick="sendSuggestion(this)">
           <div class="suggestion-label">Skills</div>
           Show available agent skills
+        </div>
+        <div class="suggestion" onclick="sendSuggestion(this)">
+          <div class="suggestion-label">Connect</div>
+          Connect to agent 0.0.12345
         </div>
       </div>
     </div>
@@ -542,10 +566,12 @@ function getChatHTML(): string {
         '<h2>Hedera Agent Marketplace Chat</h2>' +
         '<p>Chat with the marketplace agent using natural language &mdash; register agents, discover capabilities, connect via HCS-10, and exchange messages.</p>' +
         '<div class="suggestions" id="suggestions">' +
-          '<div class="suggestion" onclick="sendSuggestion(this)"><div class="suggestion-label">Register</div>Register me as a data analyst agent</div>' +
-          '<div class="suggestion" onclick="sendSuggestion(this)"><div class="suggestion-label">Discover</div>Find agents that can analyze financial data</div>' +
-          '<div class="suggestion" onclick="sendSuggestion(this)"><div class="suggestion-label">Connect</div>Connect to agent 0.0.12345</div>' +
+          '<div class="suggestion" onclick="sendSuggestion(this)"><div class="suggestion-label">Discover</div>Find me an AI agent for data analysis</div>' +
+          '<div class="suggestion" onclick="sendSuggestion(this)"><div class="suggestion-label">Register</div>Register a new agent</div>' +
+          '<div class="suggestion" onclick="sendSuggestion(this)"><div class="suggestion-label">Trust</div>Show trust scores for available agents</div>' +
+          '<div class="suggestion" onclick="sendSuggestion(this)"><div class="suggestion-label">Search</div>Search for code review agents</div>' +
           '<div class="suggestion" onclick="sendSuggestion(this)"><div class="suggestion-label">Skills</div>Show available agent skills</div>' +
+          '<div class="suggestion" onclick="sendSuggestion(this)"><div class="suggestion-label">Connect</div>Connect to agent 0.0.12345</div>' +
         '</div></div>';
     }
 
@@ -591,7 +617,17 @@ function getChatHTML(): string {
           if (data.sessionId) sessionId = data.sessionId;
           if (data.response) {
             var toolCalls = data.actions ? data.actions.map(function(a) { return { name: a.tool, args: a.args, output: a.result ? a.result.message : '' }; }) : null;
-            addMessage('agent', data.response, toolCalls);
+            var agentData = null;
+            if (data.actions) {
+              for (var i = 0; i < data.actions.length; i++) {
+                var act = data.actions[i];
+                if (act.result && act.result.data) {
+                  if (act.result.data.agents) agentData = act.result.data.agents;
+                  else if (act.result.data.results) agentData = act.result.data.results;
+                }
+              }
+            }
+            addMessage('agent', data.response, toolCalls, null, agentData);
           } else if (data.error) {
             addMessage('agent', data.message || data.error, null, data.error);
           }
@@ -607,7 +643,7 @@ function getChatHTML(): string {
         });
     }
 
-    function addMessage(role, content, toolCalls, error) {
+    function addMessage(role, content, toolCalls, error, agentCards) {
       var container = document.getElementById('chatContainer');
       var div = document.createElement('div');
       div.className = 'message ' + role;
@@ -629,11 +665,41 @@ function getChatHTML(): string {
         toolCallsHTML += '</div>';
       }
 
+      var agentCardsHTML = '';
+      if (agentCards && agentCards.length > 0) {
+        agentCardsHTML = '<div class="chat-agent-cards">';
+        var maxCards = Math.min(agentCards.length, 5);
+        for (var j = 0; j < maxCards; j++) {
+          var ag = agentCards[j];
+          var name = ag.display_name || ag.name || 'Agent';
+          var bio = ag.bio || ag.description || '';
+          var tags = ag.tags || ag.capabilities || [];
+          var score = ag.score ? Math.round(ag.score * 100) + '%' : (ag.reputation_score ? ag.reputation_score + '/100' : '');
+          agentCardsHTML += '<div class="chat-agent-card">';
+          agentCardsHTML += '<div class="chat-agent-card-header">';
+          agentCardsHTML += '<div class="chat-agent-card-avatar">&#x1F916;</div>';
+          agentCardsHTML += '<span class="chat-agent-card-name">' + escapeHtml(name) + '</span>';
+          if (score) agentCardsHTML += '<span class="chat-agent-card-score">&#x2B50; ' + escapeHtml(score) + '</span>';
+          agentCardsHTML += '</div>';
+          if (bio) agentCardsHTML += '<div class="chat-agent-card-bio">' + escapeHtml(bio.substring(0, 120)) + (bio.length > 120 ? '...' : '') + '</div>';
+          if (tags.length > 0) {
+            agentCardsHTML += '<div class="chat-agent-card-tags">';
+            var maxTags = Math.min(tags.length, 4);
+            for (var t = 0; t < maxTags; t++) {
+              agentCardsHTML += '<span class="chat-agent-card-tag">' + escapeHtml(tags[t]) + '</span>';
+            }
+            agentCardsHTML += '</div>';
+          }
+          agentCardsHTML += '</div>';
+        }
+        agentCardsHTML += '</div>';
+      }
+
       var errorHTML = error ? '<div class="error-badge">Error: ' + escapeHtml(error) + '</div>' : '';
 
       div.innerHTML = '<div class="message-avatar">' + avatar + '</div>' +
         '<div class="message-body">' +
-          '<div class="message-content">' + formatContent(content) + toolCallsHTML + errorHTML + '</div>' +
+          '<div class="message-content">' + formatContent(content) + agentCardsHTML + toolCallsHTML + errorHTML + '</div>' +
           '<div class="message-time">' + time + '</div>' +
         '</div>';
 
