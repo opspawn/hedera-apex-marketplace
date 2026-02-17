@@ -35,15 +35,15 @@ describe('Sprint 29: Version and config', () => {
     ({ app } = createApp());
   });
 
-  test('reports version 0.34.0', async () => {
+  test('reports version 0.35.0', async () => {
     const res = await req(app, 'GET', '/health');
     expect(res.status).toBe(200);
-    expect(res.body.version).toBe('0.34.0');
+    expect(res.body.version).toBe('0.35.0');
   });
 
   test('reports 1760 test count', async () => {
     const res = await req(app, 'GET', '/health');
-    expect(res.body.test_count).toBe(2200);
+    expect(res.body.test_count).toBeGreaterThanOrEqual(2300);
   });
 
   test('includes trust-scores in agent card capabilities', async () => {

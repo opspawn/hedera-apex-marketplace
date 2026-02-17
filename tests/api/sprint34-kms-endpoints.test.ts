@@ -10,7 +10,7 @@
  * - GET /api/kms/audit/:keyId — Audit log
  * - GET /api/kms/status — KMS status
  * - GET /api/kms/registrations — List registrations
- * - Version 0.34.0 assertions
+ * - Version 0.35.0 assertions
  */
 
 // Force mock mode for tests
@@ -50,25 +50,25 @@ describe('Sprint 34: Version assertions', () => {
   let app: Express;
   beforeEach(() => { ({ app } = createApp()); });
 
-  test('reports version 0.34.0 in /health', async () => {
+  test('reports version 0.35.0 in /health', async () => {
     const res = await req(app, 'GET', '/health');
     expect(res.status).toBe(200);
-    expect(res.body.version).toBe('0.34.0');
+    expect(res.body.version).toBe('0.35.0');
   });
 
-  test('reports version 0.34.0 in /api/health', async () => {
+  test('reports version 0.35.0 in /api/health', async () => {
     const res = await req(app, 'GET', '/api/health');
-    expect(res.body.version).toBe('0.34.0');
+    expect(res.body.version).toBe('0.35.0');
   });
 
-  test('reports version 0.34.0 in /ready', async () => {
+  test('reports version 0.35.0 in /ready', async () => {
     const res = await req(app, 'GET', '/ready');
-    expect(res.body.version).toBe('0.34.0');
+    expect(res.body.version).toBe('0.35.0');
   });
 
-  test('reports version 0.34.0 in /api/ready', async () => {
+  test('reports version 0.35.0 in /api/ready', async () => {
     const res = await req(app, 'GET', '/api/ready');
-    expect(res.body.version).toBe('0.34.0');
+    expect(res.body.version).toBe('0.35.0');
   });
 
   test('reports test count >= 2150', async () => {
@@ -76,19 +76,19 @@ describe('Sprint 34: Version assertions', () => {
     expect(res.body.test_count).toBeGreaterThanOrEqual(2150);
   });
 
-  test('package.json version is 0.34.0', () => {
+  test('package.json version is 0.35.0', () => {
     const pkg = require('../../package.json');
-    expect(pkg.version).toBe('0.34.0');
+    expect(pkg.version).toBe('0.35.0');
   });
 
-  test('api/stats reports version 0.34.0', async () => {
+  test('api/stats reports version 0.35.0', async () => {
     const res = await req(app, 'GET', '/api/stats');
-    expect(res.body.version).toBe('0.34.0');
+    expect(res.body.version).toBe('0.35.0');
   });
 
-  test('agent card reports version 0.34.0', async () => {
+  test('agent card reports version 0.35.0', async () => {
     const res = await req(app, 'GET', '/.well-known/agent-card.json');
-    expect(res.body.version).toBe('0.34.0');
+    expect(res.body.version).toBe('0.35.0');
   });
 });
 

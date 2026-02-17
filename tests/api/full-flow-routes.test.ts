@@ -79,11 +79,11 @@ describe('POST /api/demo/full-flow', () => {
     expect(res.body.status).toBe('completed');
   }, 30000);
 
-  it('should return 6 steps', async () => {
+  it('should return 10 steps', async () => {
     const app = createTestApp();
     const res = await request(app, 'POST', '/api/demo/full-flow');
 
-    expect(res.body.steps).toHaveLength(6);
+    expect(res.body.steps).toHaveLength(10);
   });
 
   it('should include summary with metrics', async () => {
@@ -91,7 +91,7 @@ describe('POST /api/demo/full-flow', () => {
     const res = await request(app, 'POST', '/api/demo/full-flow');
 
     expect(res.body.summary).toBeDefined();
-    expect(res.body.summary.total_steps).toBe(6);
+    expect(res.body.summary.total_steps).toBe(10);
     expect(res.body.summary.agent_registered).toBeTruthy();
   });
 
@@ -132,7 +132,7 @@ describe('Version and test count updates', () => {
     const res = await request(app, 'GET', '/health');
 
     expect(res.status).toBe(200);
-    expect(res.body.version).toBe('0.34.0');
+    expect(res.body.version).toBe('0.35.0');
   });
 
   it('health endpoint should report test count >= 1450', async () => {
@@ -146,6 +146,6 @@ describe('Version and test count updates', () => {
     const app = createTestApp();
     const res = await request(app, 'GET', '/api/stats');
 
-    expect(res.body.version).toBe('0.34.0');
+    expect(res.body.version).toBe('0.35.0');
   });
 });

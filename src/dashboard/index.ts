@@ -565,7 +565,7 @@ function getDashboardHTML(): string {
       <div class="logo" aria-hidden="true">H</div>
       <div>
         <h1><span>Hedera</span> Agent Marketplace</h1>
-        <div style="font-size:0.7rem; color:#6a7a9a; margin-top:0.15rem;">v0.34.0 &middot; <span id="testnet-mode" style="color:#00c853;">Testnet</span> &middot; Account <span style="color:#00d4ff;">0.0.7854018</span></div>
+        <div style="font-size:0.7rem; color:#6a7a9a; margin-top:0.15rem;">v0.35.0 &middot; <span id="testnet-mode" style="color:#00c853;">Testnet</span> &middot; Account <span style="color:#00d4ff;">0.0.7854018</span></div>
       </div>
     </div>
     <div class="header-right" aria-label="Supported HCS Standards">
@@ -604,6 +604,7 @@ function getDashboardHTML(): string {
     <div class="nav-tab" data-view="reachability" role="tab" tabindex="0" aria-selected="false" aria-controls="view-reachability" style="color:#00c853;">Reachability</div>
     <div class="nav-tab" data-view="dual-identity" role="tab" tabindex="0" aria-selected="false" aria-controls="view-dual-identity" style="color:#ff6b6b;">Dual Identity</div>
     <div class="nav-tab" data-view="kms" role="tab" tabindex="0" aria-selected="false" aria-controls="view-kms" style="color:#f59e0b;">AWS KMS</div>
+    <div class="nav-tab" data-view="full-demo" role="tab" tabindex="0" aria-selected="false" aria-controls="view-full-demo" style="color:#ff6b6b; font-weight:600;">Full Demo</div>
     <a href="/chat" class="nav-tab" style="color:#00d4ff; text-decoration:none;" title="Chat with Hedera Agent">&#x1F4AC; Agent Chat</a>
   </nav>
 
@@ -1254,6 +1255,46 @@ function getDashboardHTML(): string {
       </div>
     </div>
 
+    <!-- Full Demo View (Sprint 35) -->
+    <div class="view" id="view-full-demo" role="tabpanel" aria-labelledby="tab-full-demo">
+      <h2 style="color:#fff; margin-bottom:0.5rem;">Full Agent Lifecycle Demo</h2>
+      <p style="color:#8892b0; margin-bottom:1.5rem;">Run the complete 10-step agent lifecycle: register &rarr; privacy &rarr; skills &rarr; broker &rarr; discover &rarr; connect &rarr; delegate &rarr; feedback &rarr; KMS &rarr; ERC-8004.</p>
+
+      <div style="display:flex; gap:1rem; align-items:center; margin-bottom:1.5rem;">
+        <button class="btn btn-primary" id="run-full-demo-btn" onclick="runFullDemo()" style="font-size:1rem; padding:0.85rem 2rem; background:linear-gradient(135deg,#ff6b6b,#ee5a24);">Run Full Demo</button>
+        <span id="full-demo-status" style="color:#6a7a9a; font-size:0.9rem;">Ready to run</span>
+      </div>
+
+      <!-- Progress Steps -->
+      <div id="full-demo-steps" style="margin-bottom:1.5rem;"></div>
+
+      <!-- Aggregate Stats -->
+      <div id="full-demo-stats" style="display:none;">
+        <div class="stats">
+          <div class="stat-card">
+            <span class="stat-icon">&#x2705;</span>
+            <div class="value" id="fd-completed">0</div>
+            <div class="label">Steps Completed</div>
+          </div>
+          <div class="stat-card">
+            <span class="stat-icon">&#x26A1;</span>
+            <div class="value" id="fd-duration">0ms</div>
+            <div class="label">Total Duration</div>
+          </div>
+          <div class="stat-card">
+            <span class="stat-icon">&#x1F4CA;</span>
+            <div class="value" id="fd-standards">0</div>
+            <div class="label">Standards Exercised</div>
+          </div>
+          <div class="stat-card">
+            <span class="stat-icon">&#x1F3AF;</span>
+            <div class="value" id="fd-features">0</div>
+            <div class="label">Features Tested</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
 
   <!-- Agent Detail Modal -->
@@ -1311,6 +1352,7 @@ function getDashboardHTML(): string {
       if (tab.dataset.view === 'reachability') { loadReachability(); }
       if (tab.dataset.view === 'dual-identity') { loadDualIdentity(); }
       if (tab.dataset.view === 'kms') { loadKMSData(); }
+      if (tab.dataset.view === 'full-demo') { /* ready state */ }
     }
 
     // Load analytics data
@@ -2374,6 +2416,78 @@ function getDashboardHTML(): string {
           showToast('Key rotation failed: ' + (data.error || 'unknown'), 'error');
         }
       } catch (err) { showToast('Key rotation failed', 'error'); }
+    }
+
+    // Full Demo runner (Sprint 35)
+    var fullDemoRunning = false;
+    async function runFullDemo() {
+      if (fullDemoRunning) return;
+      fullDemoRunning = true;
+      var btn = document.getElementById('run-full-demo-btn');
+      var statusEl = document.getElementById('full-demo-status');
+      var stepsEl = document.getElementById('full-demo-steps');
+      var statsEl = document.getElementById('full-demo-stats');
+      btn.disabled = true;
+      btn.textContent = 'Running...';
+      statusEl.textContent = 'Executing 10-step lifecycle...';
+      statusEl.style.color = '#00d4ff';
+      stepsEl.innerHTML = '<div style="color:#6a7a9a; padding:1rem; text-align:center;">Starting full demo flow...</div>';
+      statsEl.style.display = 'none';
+
+      try {
+        var resp = await fetch('/api/demo/full-flow', { method: 'POST' });
+        var data = await resp.json();
+
+        // Render steps
+        var html = '';
+        (data.steps || []).forEach(function(s) {
+          var icon = s.status === 'completed' ? '&#x2705;' : s.status === 'failed' ? '&#x274C;' : '&#x23F3;';
+          var borderColor = s.status === 'completed' ? '#00c853' : s.status === 'failed' ? '#ff6b6b' : '#1e2a4a';
+          var proofHtml = '';
+          if (s.proof && s.proof.hashscan_url) {
+            proofHtml = '<div style="margin-top:0.4rem;"><a href="' + s.proof.hashscan_url + '" target="_blank" style="color:#00d4ff; font-size:0.8rem; text-decoration:none;">View on HashScan &rarr;</a></div>';
+          }
+          if (s.proof && s.proof.topic_id) {
+            proofHtml += '<div style="font-size:0.75rem; color:#4a6a8a; margin-top:0.2rem;">Topic: ' + s.proof.topic_id + '</div>';
+          }
+          if (s.proof && s.proof.tx_hash) {
+            proofHtml += '<div style="font-size:0.75rem; color:#4a6a8a; margin-top:0.2rem;">Tx: ' + s.proof.tx_hash + '</div>';
+          }
+          html += '<div style="background:#111827; border-radius:12px; padding:1rem 1.25rem; border:1px solid ' + borderColor + '; margin-bottom:0.75rem; display:flex; gap:1rem; align-items:flex-start;">';
+          html += '<div style="font-size:1.2rem; flex-shrink:0; width:32px; text-align:center;">' + icon + '</div>';
+          html += '<div style="flex:1;">';
+          html += '<div style="display:flex; justify-content:space-between; align-items:center;">';
+          html += '<span style="color:#fff; font-weight:600; font-size:0.95rem;">Step ' + s.step + ': ' + s.title + '</span>';
+          html += '<span style="color:#6a7a9a; font-size:0.8rem;">' + s.duration_ms + 'ms</span>';
+          html += '</div>';
+          html += '<div style="color:#8892b0; font-size:0.85rem; margin-top:0.3rem;">' + s.detail + '</div>';
+          html += proofHtml;
+          if (s.error) html += '<div style="color:#ff6b6b; font-size:0.8rem; margin-top:0.3rem;">Error: ' + s.error + '</div>';
+          html += '</div></div>';
+        });
+        stepsEl.innerHTML = html;
+
+        // Show aggregate stats
+        var summary = data.summary || {};
+        statsEl.style.display = 'block';
+        document.getElementById('fd-completed').textContent = summary.completed_steps + '/' + summary.total_steps;
+        document.getElementById('fd-duration').textContent = data.total_duration_ms + 'ms';
+        document.getElementById('fd-standards').textContent = (summary.standards_exercised || []).length;
+        document.getElementById('fd-features').textContent = (summary.features || []).length;
+
+        statusEl.textContent = data.status === 'completed' ? 'All 10 steps completed successfully!' : 'Completed with ' + summary.failed_steps + ' failure(s)';
+        statusEl.style.color = data.status === 'completed' ? '#00c853' : '#ff6b6b';
+        showToast('Full demo: ' + summary.completed_steps + '/' + summary.total_steps + ' steps passed', data.status === 'completed' ? 'success' : 'error');
+      } catch (err) {
+        stepsEl.innerHTML = '<div style="color:#ff6b6b; padding:1rem;">Failed to run demo: ' + (err.message || err) + '</div>';
+        statusEl.textContent = 'Demo failed';
+        statusEl.style.color = '#ff6b6b';
+        showToast('Full demo failed', 'error');
+      }
+
+      btn.disabled = false;
+      btn.textContent = 'Run Full Demo';
+      fullDemoRunning = false;
     }
 
     // Initial load

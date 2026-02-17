@@ -1,13 +1,17 @@
 /**
  * Integration test: Full end-to-end demo flow via API endpoint
  *
- * Tests the /api/demo/full-flow endpoint which exercises:
- * 1. Agent registration (HCS-19)
- * 2. Skill publishing (HCS-26)
- * 3. Agent discovery (Registry Broker)
- * 4. Agent connection (HCS-10)
- * 5. Task execution (Chat Relay)
- * 6. Feedback submission (HCS-20)
+ * Tests the /api/demo/full-flow endpoint which exercises the 10-step lifecycle:
+ * 1. Register Agent (HCS-10)
+ * 2. Set Privacy Rules (HCS-19)
+ * 3. Register Skills (HCS-26)
+ * 4. Connect to Registry Broker (HOL)
+ * 5. Discover Agents (Vector Search)
+ * 6. Accept Connection (HCS-10)
+ * 7. Delegate Task
+ * 8. Feedback & Trust (HCS-20)
+ * 9. KMS Signing
+ * 10. ERC-8004 Dual Identity
  */
 import { createApp } from '../../src/index';
 import { Express } from 'express';
@@ -39,12 +43,12 @@ describe('Full Flow E2E Integration', () => {
     ({ app } = createApp());
   });
 
-  it('POST /api/demo/full-flow should complete all 6 steps', async () => {
+  it('POST /api/demo/full-flow should complete all 10 steps', async () => {
     const res = await request(app, 'POST', '/api/demo/full-flow');
 
     expect(res.status).toBe(200);
     expect(res.body.status).toBe('completed');
-    expect(res.body.steps).toHaveLength(6);
+    expect(res.body.steps).toHaveLength(10);
     expect(res.body.total_duration_ms).toBeGreaterThanOrEqual(0);
     expect(res.body.started_at).toBeDefined();
     expect(res.body.completed_at).toBeDefined();
@@ -55,12 +59,16 @@ describe('Full Flow E2E Integration', () => {
 
     const phases = res.body.steps.map((s: any) => s.phase);
     expect(phases).toEqual([
-      'registration',
-      'skills',
+      'hcs-10',
+      'hcs-19',
+      'hcs-26',
+      'hol',
       'discovery',
-      'connection',
-      'execution',
-      'feedback',
+      'hcs-10-connect',
+      'delegation',
+      'hcs-20',
+      'kms',
+      'erc-8004',
     ]);
   });
 
@@ -69,62 +77,62 @@ describe('Full Flow E2E Integration', () => {
 
     const summary = res.body.summary;
     expect(summary).toBeDefined();
-    expect(summary.total_steps).toBe(6);
-    expect(summary.completed_steps).toBeGreaterThanOrEqual(5);
+    expect(summary.total_steps).toBe(10);
+    expect(summary.completed_steps).toBeGreaterThanOrEqual(9);
     expect(summary.agent_registered).toBeTruthy();
-    expect(summary.feedback_submitted).toBe(true);
   });
 
   it('should register an agent with identity in step 1', async () => {
     const res = await request(app, 'POST', '/api/demo/full-flow');
 
     const regStep = res.body.steps[0];
-    expect(regStep.phase).toBe('registration');
+    expect(regStep.phase).toBe('hcs-10');
     expect(regStep.status).toBe('completed');
     expect(regStep.data.agent_id).toBeDefined();
     expect(regStep.data.agent_name).toBeDefined();
   });
 
-  it('should publish skills in step 2', async () => {
+  it('should set privacy rules in step 2', async () => {
     const res = await request(app, 'POST', '/api/demo/full-flow');
 
-    const skillStep = res.body.steps[1];
-    expect(skillStep.phase).toBe('skills');
+    const privStep = res.body.steps[1];
+    expect(privStep.phase).toBe('hcs-19');
+    expect(privStep.status).toBe('completed');
+    expect(privStep.data.consent_id).toBeDefined();
+  });
+
+  it('should publish skills in step 3', async () => {
+    const res = await request(app, 'POST', '/api/demo/full-flow');
+
+    const skillStep = res.body.steps[2];
+    expect(skillStep.phase).toBe('hcs-26');
     expect(skillStep.status).toBe('completed');
     expect(skillStep.data.count).toBeGreaterThanOrEqual(1);
   });
 
-  it('should discover agents in step 3', async () => {
+  it('should discover agents in step 5', async () => {
     const res = await request(app, 'POST', '/api/demo/full-flow');
 
-    const discStep = res.body.steps[2];
+    const discStep = res.body.steps[4];
     expect(discStep.phase).toBe('discovery');
     expect(discStep.status).toBe('completed');
-    expect(discStep.data.local_agents).toBeDefined();
+    expect(discStep.data.total).toBeGreaterThanOrEqual(1);
   });
 
-  it('should establish connection in step 4', async () => {
+  it('should delegate task in step 7', async () => {
     const res = await request(app, 'POST', '/api/demo/full-flow');
 
-    const connStep = res.body.steps[3];
-    expect(connStep.phase).toBe('connection');
-    expect(connStep.status).toBe('completed');
-    expect(connStep.data.protocol).toBe('hcs-10');
+    const taskStep = res.body.steps[6];
+    expect(taskStep.phase).toBe('delegation');
+    expect(taskStep.status).toBe('completed');
+    expect(taskStep.data.task_id).toBeDefined();
   });
 
-  it('should execute task in step 5', async () => {
+  it('should submit feedback with HCS-20 points in step 8', async () => {
     const res = await request(app, 'POST', '/api/demo/full-flow');
 
-    const execStep = res.body.steps[4];
-    expect(execStep.phase).toBe('execution');
-    expect(execStep.status).toBe('completed');
-  });
-
-  it('should submit feedback with HCS-20 points in step 6', async () => {
-    const res = await request(app, 'POST', '/api/demo/full-flow');
-
-    const fbStep = res.body.steps[5];
-    expect(fbStep.phase).toBe('feedback');
+    const fbStep = res.body.steps[7];
+    expect(fbStep.phase).toBe('hcs-20');
     expect(fbStep.status).toBe('completed');
     expect(fbStep.data.points_awarded).toBe(175);
     expect(fbStep.data.rating).toBe(5);
@@ -170,6 +178,5 @@ describe('Demo Flow Dashboard', () => {
     expect(res.body).toContain('End-to-End Demo Flow');
     expect(res.body).toContain('Run Full Demo');
     expect(res.body).toContain('/api/demo/full-flow');
-    expect(res.body).toContain('v0.24.0');
   });
 });

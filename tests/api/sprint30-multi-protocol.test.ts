@@ -36,25 +36,25 @@ describe('Sprint 30: Version and config', () => {
   let app: Express;
   beforeEach(() => { ({ app } = createApp()); });
 
-  test('reports version 0.34.0', async () => {
+  test('reports version 0.35.0', async () => {
     const res = await req(app, 'GET', '/health');
     expect(res.status).toBe(200);
-    expect(res.body.version).toBe('0.34.0');
+    expect(res.body.version).toBe('0.35.0');
   });
 
   test('reports 1760 test count', async () => {
     const res = await req(app, 'GET', '/health');
-    expect(res.body.test_count).toBe(2200);
+    expect(res.body.test_count).toBeGreaterThanOrEqual(2300);
   });
 
-  test('ready endpoint reports 0.34.0', async () => {
+  test('ready endpoint reports 0.35.0', async () => {
     const res = await req(app, 'GET', '/ready');
-    expect(res.body.version).toBe('0.34.0');
+    expect(res.body.version).toBe('0.35.0');
   });
 
-  test('api/ready endpoint reports 0.34.0', async () => {
+  test('api/ready endpoint reports 0.35.0', async () => {
     const res = await req(app, 'GET', '/api/ready');
-    expect(res.body.version).toBe('0.34.0');
+    expect(res.body.version).toBe('0.35.0');
   });
 });
 
@@ -80,9 +80,9 @@ describe('Sprint 30: A2A agent card endpoint', () => {
     expect(res.body.protocol).toBe('a2a');
   });
 
-  test('agent card has version 0.34.0', async () => {
+  test('agent card has version 0.35.0', async () => {
     const res = await req(app, 'GET', '/api/a2a/agent-card');
-    expect(res.body.version).toBe('0.34.0');
+    expect(res.body.version).toBe('0.35.0');
   });
 
   test('agent card has capabilities object', async () => {
@@ -413,7 +413,7 @@ describe('Sprint 30: MCP tools endpoint', () => {
   test('server info has version', async () => {
     const res = await req(app, 'GET', '/api/mcp/tools');
     expect(res.body.server).toBeDefined();
-    expect(res.body.server.version).toBe('0.34.0');
+    expect(res.body.server.version).toBe('0.35.0');
     expect(res.body.server.name).toBe('hedera-agent-marketplace');
   });
 
@@ -702,20 +702,20 @@ describe('Sprint 30: Cross-protocol integration', () => {
 
   test('health endpoint reflects new version and test count', async () => {
     const res = await req(app, 'GET', '/api/health');
-    expect(res.body.version).toBe('0.34.0');
-    expect(res.body.test_count).toBe(2200);
+    expect(res.body.version).toBe('0.35.0');
+    expect(res.body.test_count).toBeGreaterThanOrEqual(2300);
   });
 
   test('live-stats endpoint still works', async () => {
     const res = await req(app, 'GET', '/api/live-stats');
     expect(res.status).toBe(200);
-    expect(res.body.version).toBe('0.34.0');
+    expect(res.body.version).toBe('0.35.0');
   });
 
   test('stats endpoint reflects new version', async () => {
     const res = await req(app, 'GET', '/api/stats');
     expect(res.status).toBe(200);
-    expect(res.body.version).toBe('0.34.0');
-    expect(res.body.testCount).toBe(2200);
+    expect(res.body.version).toBe('0.35.0');
+    expect(res.body.testCount).toBeGreaterThanOrEqual(2300);
   });
 });
