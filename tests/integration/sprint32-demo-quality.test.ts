@@ -145,11 +145,11 @@ describe('Sprint 32: Demo Quality E2E Flow', () => {
     test('should show correct test count in health endpoint', () => {
       const healthInfo = {
         status: 'healthy',
-        version: '0.33.0',
+        version: '0.34.0',
         test_count: 1950,
         standards: ['HCS-10', 'HCS-11', 'HCS-14', 'HCS-19', 'HCS-20', 'HCS-26'],
       };
-      expect(healthInfo.version).toBe('0.33.0');
+      expect(healthInfo.version).toBe('0.34.0');
       expect(healthInfo.test_count).toBeGreaterThanOrEqual(1950);
       expect(healthInfo.standards).toHaveLength(6);
     });

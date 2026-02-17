@@ -39,10 +39,12 @@ import { TestnetIntegration } from '../hedera/testnet-integration';
 import { TrustScoreTracker } from '../marketplace/trust-score';
 import { AnalyticsTracker } from '../marketplace/analytics';
 import { ERC8004IdentityManager } from '../hol/erc8004-identity';
+import { KMSKeyManager, KMSAuditEntry, IKMSClient, KMSKeySpec } from '../hedera/kms-signer';
+import { KMSAgentRegistrationManager } from '../hedera/kms-agent-registration';
 
 // Test count managed as a constant — updated each sprint
-const TEST_COUNT = 2100;
-const VERSION = '0.33.0';
+const TEST_COUNT = 2200;
+const VERSION = '0.34.0';
 const STANDARDS = ['HCS-10', 'HCS-11', 'HCS-14', 'HCS-19', 'HCS-20', 'HCS-26'];
 
 export function createRouter(
@@ -60,6 +62,7 @@ export function createRouter(
   trustTracker?: TrustScoreTracker,
   analyticsTracker?: AnalyticsTracker,
   erc8004Manager?: ERC8004IdentityManager,
+  kmsRegistrationManager?: KMSAgentRegistrationManager,
 ): Router {
   const router = Router();
   const appStartTime = startTime || Date.now();
@@ -2170,6 +2173,214 @@ export function createRouter(
   });
   router.get('/.well-known/agent.json', (_req: Request, res: Response) => {
     res.json(agentCardPayload);
+  });
+
+  // ==========================================
+  // AWS KMS Agent Signing Routes (Sprint 34)
+  // ==========================================
+
+  // POST /api/kms/create-key — Create a new KMS key (ED25519 or ECDSA)
+  router.post('/api/kms/create-key', async (req: Request, res: Response) => {
+    if (!kmsRegistrationManager) {
+      res.status(501).json({ error: 'not_available', message: 'KMS integration not configured' });
+      return;
+    }
+    try {
+      const { keySpec, description, tags } = req.body;
+      const spec: KMSKeySpec = keySpec === 'ECC_SECG_P256K1' ? 'ECC_SECG_P256K1' : 'ECC_NIST_EDWARDS25519';
+      const keyManager = kmsRegistrationManager.getKeyManager();
+      const keyInfo = await keyManager.createKey({
+        keySpec: spec,
+        description: description || `KMS ${spec} key`,
+        tags: tags || {},
+      });
+      res.status(201).json({
+        success: true,
+        key: {
+          keyId: keyInfo.keyId,
+          keyArn: keyInfo.keyArn,
+          keySpec: keyInfo.keySpec,
+          publicKey: keyInfo.hederaPublicKey,
+          createdAt: keyInfo.createdAt,
+        },
+      });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      res.status(500).json({ error: 'kms_create_key_failed', message });
+    }
+  });
+
+  // GET /api/kms/keys — List all KMS-managed agent keys
+  router.get('/api/kms/keys', (_req: Request, res: Response) => {
+    if (!kmsRegistrationManager) {
+      res.json({ keys: [], total: 0 });
+      return;
+    }
+    const keyManager = kmsRegistrationManager.getKeyManager();
+    const keys = keyManager.listKeys();
+    res.json({
+      keys: keys.map(k => ({
+        keyId: k.keyInfo.keyId,
+        keyArn: k.keyInfo.keyArn,
+        keySpec: k.keyInfo.keySpec,
+        publicKey: k.keyInfo.hederaPublicKey,
+        agentId: k.agentId || null,
+        status: k.status,
+        signCount: k.signCount,
+        createdAt: k.createdAt,
+        lastUsedAt: k.lastUsedAt || null,
+      })),
+      total: keys.length,
+    });
+  });
+
+  // POST /api/kms/register-agent — Full KMS-backed agent registration flow
+  router.post('/api/kms/register-agent', async (req: Request, res: Response) => {
+    if (!kmsRegistrationManager) {
+      res.status(501).json({ error: 'not_available', message: 'KMS integration not configured' });
+      return;
+    }
+    try {
+      const { name, description, keySpec, endpoint, skills, tags } = req.body;
+      if (!name || !description) {
+        res.status(400).json({ error: 'validation_error', message: 'name and description are required' });
+        return;
+      }
+      const result = await kmsRegistrationManager.registerAgentWithKMS({
+        name,
+        description,
+        keySpec: keySpec || 'ECC_NIST_EDWARDS25519',
+        endpoint,
+        skills,
+        tags,
+      });
+      const statusCode = result.success ? 201 : 500;
+      res.status(statusCode).json(result);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      res.status(500).json({ error: 'kms_register_failed', message });
+    }
+  });
+
+  // POST /api/kms/sign/:keyId — Sign a transaction with KMS
+  router.post('/api/kms/sign/:keyId', async (req: Request, res: Response) => {
+    if (!kmsRegistrationManager) {
+      res.status(501).json({ error: 'not_available', message: 'KMS integration not configured' });
+      return;
+    }
+    try {
+      const keyId = String(req.params.keyId);
+      const { message, txHash } = req.body;
+      if (!message) {
+        res.status(400).json({ error: 'validation_error', message: 'message (base64 or hex encoded) is required' });
+        return;
+      }
+
+      // Accept base64 or hex encoded message
+      let messageBytes: Uint8Array;
+      if (typeof message === 'string') {
+        const isHex = /^[0-9a-fA-F]+$/.test(message);
+        messageBytes = isHex
+          ? new Uint8Array(Buffer.from(message, 'hex'))
+          : new Uint8Array(Buffer.from(message, 'base64'));
+      } else {
+        messageBytes = new Uint8Array(message);
+      }
+
+      const result = await kmsRegistrationManager.signAgentTransaction(keyId, messageBytes, txHash);
+      if (result.success) {
+        res.json(result);
+      } else {
+        res.status(500).json({ error: 'sign_failed', ...result });
+      }
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : 'Unknown error';
+      res.status(500).json({ error: 'kms_sign_failed', message: errMsg });
+    }
+  });
+
+  // POST /api/kms/rotate/:agentId — Rotate an agent's KMS key
+  router.post('/api/kms/rotate/:agentId', async (req: Request, res: Response) => {
+    if (!kmsRegistrationManager) {
+      res.status(501).json({ error: 'not_available', message: 'KMS integration not configured' });
+      return;
+    }
+    try {
+      const agentId = String(req.params.agentId);
+      const result = await kmsRegistrationManager.rotateAgentKey(agentId);
+      if (result.success) {
+        res.json(result);
+      } else {
+        res.status(404).json({ error: 'rotation_failed', ...result });
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      res.status(500).json({ error: 'kms_rotate_failed', message });
+    }
+  });
+
+  // GET /api/kms/audit/:keyId — Get signing audit log for a key
+  router.get('/api/kms/audit/:keyId', (req: Request, res: Response) => {
+    if (!kmsRegistrationManager) {
+      res.json({ entries: [], total: 0 });
+      return;
+    }
+    const keyId = String(req.params.keyId);
+    const limit = parseInt(String(req.query.limit)) || 100;
+    const keyManager = kmsRegistrationManager.getKeyManager();
+    const entries = keyManager.getAuditLog(keyId, limit);
+    res.json({
+      keyId,
+      entries,
+      total: entries.length,
+    });
+  });
+
+  // GET /api/kms/status — KMS integration health/status
+  router.get('/api/kms/status', (_req: Request, res: Response) => {
+    if (!kmsRegistrationManager) {
+      res.json({
+        enabled: false,
+        totalAgents: 0,
+        totalKeys: 0,
+        activeKeys: 0,
+        totalSignOperations: 0,
+        avgSignLatencyMs: 0,
+        keyTypes: ['ECC_NIST_EDWARDS25519', 'ECC_SECG_P256K1'],
+        costEstimate: { monthlyKeyStorage: 0, totalMonthlyEstimate: 0 },
+        timestamp: new Date().toISOString(),
+      });
+      return;
+    }
+    const status = kmsRegistrationManager.getStatus();
+    res.json({
+      enabled: true,
+      ...status,
+      keyTypes: ['ECC_NIST_EDWARDS25519', 'ECC_SECG_P256K1'],
+      timestamp: new Date().toISOString(),
+    });
+  });
+
+  // GET /api/kms/registrations — List all KMS-registered agents
+  router.get('/api/kms/registrations', (_req: Request, res: Response) => {
+    if (!kmsRegistrationManager) {
+      res.json({ registrations: [], total: 0 });
+      return;
+    }
+    const registrations = kmsRegistrationManager.listRegistrations();
+    res.json({
+      registrations: registrations.map(r => ({
+        agentId: r.agentId,
+        keyId: r.keyId,
+        hederaAccountId: r.hederaAccountId,
+        publicKey: r.publicKey,
+        keySpec: r.keySpec,
+        registeredAt: r.registeredAt,
+        lastRotation: r.lastRotation || null,
+        rotationCount: r.rotationHistory.length,
+      })),
+      total: registrations.length,
+    });
   });
 
   return router;

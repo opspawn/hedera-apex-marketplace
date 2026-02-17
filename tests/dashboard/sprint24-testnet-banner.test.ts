@@ -34,9 +34,9 @@ describe('Sprint 24: Dashboard UX Polish', () => {
     expect(res.text).toContain('<!DOCTYPE html>');
   });
 
-  test('includes version v0.33.0', async () => {
+  test('includes version v0.34.0', async () => {
     const res = await request(app, 'GET', '/');
-    expect(res.text).toContain('v0.33.0');
+    expect(res.text).toContain('v0.34.0');
   });
 
   test('includes testnet banner', async () => {

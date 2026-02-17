@@ -6,7 +6,7 @@
  * - GET /api/erc8004/verify/:uaid — Verify dual identity
  * - POST /api/erc8004/link — Trigger ERC-8004 linking
  * - GET /api/identity/dual — Combined dual identity dashboard data
- * - Version 0.33.0 assertions
+ * - Version 0.34.0 assertions
  */
 
 // Force mock mode for tests — prevent Hedera SDK network calls
@@ -45,25 +45,25 @@ describe('Sprint 33: Version assertions', () => {
   let app: Express;
   beforeEach(() => { ({ app } = createApp()); });
 
-  test('reports version 0.33.0 in /health', async () => {
+  test('reports version 0.34.0 in /health', async () => {
     const res = await req(app, 'GET', '/health');
     expect(res.status).toBe(200);
-    expect(res.body.version).toBe('0.33.0');
+    expect(res.body.version).toBe('0.34.0');
   });
 
-  test('reports version 0.33.0 in /api/health', async () => {
+  test('reports version 0.34.0 in /api/health', async () => {
     const res = await req(app, 'GET', '/api/health');
-    expect(res.body.version).toBe('0.33.0');
+    expect(res.body.version).toBe('0.34.0');
   });
 
-  test('reports version 0.33.0 in /ready', async () => {
+  test('reports version 0.34.0 in /ready', async () => {
     const res = await req(app, 'GET', '/ready');
-    expect(res.body.version).toBe('0.33.0');
+    expect(res.body.version).toBe('0.34.0');
   });
 
-  test('reports version 0.33.0 in /api/ready', async () => {
+  test('reports version 0.34.0 in /api/ready', async () => {
     const res = await req(app, 'GET', '/api/ready');
-    expect(res.body.version).toBe('0.33.0');
+    expect(res.body.version).toBe('0.34.0');
   });
 
   test('reports test count >= 2050', async () => {
@@ -71,14 +71,14 @@ describe('Sprint 33: Version assertions', () => {
     expect(res.body.test_count).toBeGreaterThanOrEqual(2050);
   });
 
-  test('package.json version is 0.33.0', () => {
+  test('package.json version is 0.34.0', () => {
     const pkg = require('../../package.json');
-    expect(pkg.version).toBe('0.33.0');
+    expect(pkg.version).toBe('0.34.0');
   });
 
-  test('api/stats reports version 0.33.0', async () => {
+  test('api/stats reports version 0.34.0', async () => {
     const res = await req(app, 'GET', '/api/stats');
-    expect(res.body.version).toBe('0.33.0');
+    expect(res.body.version).toBe('0.34.0');
   });
 });
 
@@ -316,12 +316,12 @@ describe('Sprint 33: Dashboard includes dual identity', () => {
     expect(res.body.protocols).toContain('hcs-10');
     expect(res.body.protocols).toContain('a2a');
     expect(res.body.protocols).toContain('mcp');
-    expect(res.body.version).toBe('0.33.0');
+    expect(res.body.version).toBe('0.34.0');
   });
 
-  test('well-known agent-card.json version is 0.33.0', async () => {
+  test('well-known agent-card.json version is 0.34.0', async () => {
     const res = await req(app, 'GET', '/.well-known/agent-card.json');
-    expect(res.body.version).toBe('0.33.0');
+    expect(res.body.version).toBe('0.34.0');
   });
 });
 
@@ -419,7 +419,7 @@ describe('Sprint 33: Regression — existing endpoints', () => {
   test('reachability still works', async () => {
     const res = await req(app, 'GET', '/api/reachability');
     expect(res.status).toBe(200);
-    expect(res.body.version).toBe('0.33.0');
+    expect(res.body.version).toBe('0.34.0');
   });
 
   test('MCP server still works', async () => {
@@ -429,13 +429,13 @@ describe('Sprint 33: Regression — existing endpoints', () => {
       method: 'initialize',
     });
     expect(res.status).toBe(200);
-    expect(res.body.result.serverInfo.version).toBe('0.33.0');
+    expect(res.body.result.serverInfo.version).toBe('0.34.0');
   });
 
   test('A2A agent card still works', async () => {
     const res = await req(app, 'GET', '/api/a2a/agent-card');
     expect(res.status).toBe(200);
-    expect(res.body.version).toBe('0.33.0');
+    expect(res.body.version).toBe('0.34.0');
   });
 
   test('analytics endpoint still works', async () => {

@@ -565,7 +565,7 @@ function getDashboardHTML(): string {
       <div class="logo" aria-hidden="true">H</div>
       <div>
         <h1><span>Hedera</span> Agent Marketplace</h1>
-        <div style="font-size:0.7rem; color:#6a7a9a; margin-top:0.15rem;">v0.33.0 &middot; <span id="testnet-mode" style="color:#00c853;">Testnet</span> &middot; Account <span style="color:#00d4ff;">0.0.7854018</span></div>
+        <div style="font-size:0.7rem; color:#6a7a9a; margin-top:0.15rem;">v0.34.0 &middot; <span id="testnet-mode" style="color:#00c853;">Testnet</span> &middot; Account <span style="color:#00d4ff;">0.0.7854018</span></div>
       </div>
     </div>
     <div class="header-right" aria-label="Supported HCS Standards">
@@ -603,6 +603,7 @@ function getDashboardHTML(): string {
     <div class="nav-tab" data-view="analytics" role="tab" tabindex="0" aria-selected="false" aria-controls="view-analytics" style="color:#f59e0b;">Analytics</div>
     <div class="nav-tab" data-view="reachability" role="tab" tabindex="0" aria-selected="false" aria-controls="view-reachability" style="color:#00c853;">Reachability</div>
     <div class="nav-tab" data-view="dual-identity" role="tab" tabindex="0" aria-selected="false" aria-controls="view-dual-identity" style="color:#ff6b6b;">Dual Identity</div>
+    <div class="nav-tab" data-view="kms" role="tab" tabindex="0" aria-selected="false" aria-controls="view-kms" style="color:#f59e0b;">AWS KMS</div>
     <a href="/chat" class="nav-tab" style="color:#00d4ff; text-decoration:none;" title="Chat with Hedera Agent">&#x1F4AC; Agent Chat</a>
   </nav>
 
@@ -1167,6 +1168,92 @@ function getDashboardHTML(): string {
       </div>
     </div>
 
+    <!-- KMS Management View (Sprint 34) -->
+    <div class="view" id="view-kms" role="tabpanel" aria-labelledby="tab-kms">
+      <h2 style="color:#fff; margin-bottom:1rem;">AWS KMS Agent Signing</h2>
+      <p style="color:#8892b0; margin-bottom:1.5rem;">Enterprise-grade key management for agent signing. ED25519 (Hedera native) and ECDSA secp256k1 (EVM-compatible) keys managed via AWS KMS. Private keys never leave KMS.</p>
+
+      <div class="stats">
+        <div class="stat-card">
+          <span class="stat-icon">&#x1F511;</span>
+          <div class="value" id="kms-total-keys">0</div>
+          <div class="label">Total Keys</div>
+        </div>
+        <div class="stat-card">
+          <span class="stat-icon">&#x2705;</span>
+          <div class="value" id="kms-active-keys">0</div>
+          <div class="label">Active Keys</div>
+        </div>
+        <div class="stat-card">
+          <span class="stat-icon">&#x270D;</span>
+          <div class="value" id="kms-sign-ops">0</div>
+          <div class="label">Sign Operations</div>
+        </div>
+        <div class="stat-card">
+          <span class="stat-icon">&#x1F4B0;</span>
+          <div class="value" id="kms-monthly-cost">$0.00</div>
+          <div class="label">Est. Monthly Cost</div>
+        </div>
+      </div>
+
+      <!-- Key Inventory -->
+      <div style="background:#111827; border-radius:12px; padding:1.5rem; border:1px solid #1e2a4a; margin-bottom:1.5rem;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+          <h3 style="color:#f59e0b; font-size:1rem;">Key Inventory</h3>
+          <button class="btn btn-primary" onclick="createKMSKey()" style="font-size:0.85rem; padding:0.5rem 1rem;">+ Create Key</button>
+        </div>
+        <div id="kms-key-list" style="font-size:0.85rem;">
+          <div style="color:#6a7a9a; padding:1rem; text-align:center;">Loading KMS keys...</div>
+        </div>
+      </div>
+
+      <!-- KMS Registrations -->
+      <div style="background:#111827; border-radius:12px; padding:1.5rem; border:1px solid #1e2a4a; margin-bottom:1.5rem;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+          <h3 style="color:#00d4ff; font-size:1rem;">KMS-Registered Agents</h3>
+          <button class="btn btn-hire" onclick="registerKMSAgent()" style="font-size:0.85rem;">+ Register Agent with KMS</button>
+        </div>
+        <div id="kms-registrations-list" style="font-size:0.85rem;">
+          <div style="color:#6a7a9a; padding:1rem; text-align:center;">Loading registrations...</div>
+        </div>
+      </div>
+
+      <!-- Audit Log -->
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem;">
+        <div style="background:#111827; border-radius:12px; padding:1.5rem; border:1px solid #1e2a4a;">
+          <h3 style="color:#fff; margin-bottom:1rem; font-size:1rem;">Signing Activity</h3>
+          <div id="kms-audit-log" style="font-size:0.85rem; max-height:300px; overflow-y:auto;">
+            <div style="color:#6a7a9a; padding:1rem; text-align:center;">No signing activity yet</div>
+          </div>
+        </div>
+        <div style="background:#111827; border-radius:12px; padding:1.5rem; border:1px solid #1e2a4a;">
+          <h3 style="color:#fff; margin-bottom:1rem; font-size:1rem;">Cost Estimator</h3>
+          <div id="kms-cost-details" style="font-size:0.85rem;">
+            <div style="display:flex; justify-content:space-between; padding:0.5rem 0; border-bottom:1px solid #1e2a4a;">
+              <span style="color:#8892b0;">Key Storage</span>
+              <span style="color:#f59e0b; font-weight:600;" id="kms-cost-storage">$0.00/mo</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; padding:0.5rem 0; border-bottom:1px solid #1e2a4a;">
+              <span style="color:#8892b0;">Signing Ops</span>
+              <span style="color:#f59e0b; font-weight:600;" id="kms-cost-signing">$0.00/mo</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; padding:0.5rem 0; border-bottom:1px solid #1e2a4a;">
+              <span style="color:#8892b0;">Avg Latency</span>
+              <span style="color:#00d4ff; font-weight:600;" id="kms-avg-latency">0ms</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; padding:0.75rem 0; margin-top:0.5rem;">
+              <span style="color:#fff; font-weight:600;">Total Estimate</span>
+              <span style="color:#00c853; font-weight:700; font-size:1.1rem;" id="kms-cost-total">$0.00/mo</span>
+            </div>
+          </div>
+          <div style="margin-top:1rem; padding:0.75rem; background:rgba(0,212,255,0.05); border-radius:8px; border:1px solid rgba(0,212,255,0.15);">
+            <div style="color:#8892b0; font-size:0.8rem;">Pricing: $1.00/key/month + $0.15/10K asymmetric ops</div>
+            <div style="color:#8892b0; font-size:0.8rem; margin-top:0.25rem;">ED25519 KMS = first-mover advantage (Nov 2025)</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
 
   <!-- Agent Detail Modal -->
@@ -1223,6 +1310,7 @@ function getDashboardHTML(): string {
       if (tab.dataset.view === 'analytics') { loadAnalytics(); }
       if (tab.dataset.view === 'reachability') { loadReachability(); }
       if (tab.dataset.view === 'dual-identity') { loadDualIdentity(); }
+      if (tab.dataset.view === 'kms') { loadKMSData(); }
     }
 
     // Load analytics data
@@ -2166,6 +2254,126 @@ function getDashboardHTML(): string {
       } catch (e) {
         document.getElementById('testnet-info').textContent = 'Status unavailable';
       }
+    }
+
+    // ==========================================
+    // AWS KMS Management (Sprint 34)
+    // ==========================================
+
+    async function loadKMSData() {
+      try {
+        var statusResp = await fetch('/api/kms/status');
+        var status = await statusResp.json();
+        document.getElementById('kms-total-keys').textContent = status.totalKeys || 0;
+        document.getElementById('kms-active-keys').textContent = status.activeKeys || 0;
+        document.getElementById('kms-sign-ops').textContent = status.totalSignOperations || 0;
+        var cost = status.costEstimate || {};
+        document.getElementById('kms-monthly-cost').textContent = '$' + (cost.totalMonthlyEstimate || 0).toFixed(2);
+        document.getElementById('kms-cost-storage').textContent = '$' + (cost.monthlyKeyStorage || 0).toFixed(2) + '/mo';
+        document.getElementById('kms-avg-latency').textContent = (status.avgSignLatencyMs || 0) + 'ms';
+        document.getElementById('kms-cost-total').textContent = '$' + (cost.totalMonthlyEstimate || 0).toFixed(2) + '/mo';
+
+        // Load keys
+        var keysResp = await fetch('/api/kms/keys');
+        var keysData = await keysResp.json();
+        var keyList = document.getElementById('kms-key-list');
+        if (keysData.keys && keysData.keys.length > 0) {
+          keyList.innerHTML = keysData.keys.map(function(k) {
+            var specLabel = k.keySpec === 'ECC_NIST_EDWARDS25519' ? 'ED25519' : 'ECDSA';
+            var specColor = k.keySpec === 'ECC_NIST_EDWARDS25519' ? '#00d4ff' : '#a855f7';
+            var statusColor = k.status === 'active' ? '#00c853' : k.status === 'rotating' ? '#ffaa00' : '#ff4444';
+            return '<div style="display:flex; align-items:center; justify-content:space-between; padding:0.75rem; border-bottom:1px solid #1e2a4a;">' +
+              '<div>' +
+                '<div style="color:#fff; font-weight:600;">' + k.keyId.substring(0, 8) + '...</div>' +
+                '<div style="color:#8892b0; font-size:0.8rem;">Agent: ' + (k.agentId || 'unassigned') + '</div>' +
+              '</div>' +
+              '<div style="display:flex; gap:0.5rem; align-items:center;">' +
+                '<span style="padding:0.2rem 0.5rem; border-radius:4px; background:rgba(' + (specColor === '#00d4ff' ? '0,212,255' : '168,85,247') + ',0.15); color:' + specColor + '; font-size:0.75rem;">' + specLabel + '</span>' +
+                '<span style="padding:0.2rem 0.5rem; border-radius:4px; background:rgba(' + (statusColor === '#00c853' ? '0,200,83' : '255,68,68') + ',0.15); color:' + statusColor + '; font-size:0.75rem;">' + k.status + '</span>' +
+                '<span style="color:#8892b0; font-size:0.8rem;">' + k.signCount + ' signs</span>' +
+              '</div>' +
+            '</div>';
+          }).join('');
+        } else {
+          keyList.innerHTML = '<div style="color:#6a7a9a; padding:1rem; text-align:center;">No KMS keys created yet. Click "Create Key" to get started.</div>';
+        }
+
+        // Load registrations
+        var regsResp = await fetch('/api/kms/registrations');
+        var regsData = await regsResp.json();
+        var regsList = document.getElementById('kms-registrations-list');
+        if (regsData.registrations && regsData.registrations.length > 0) {
+          regsList.innerHTML = regsData.registrations.map(function(r) {
+            var specLabel = r.keySpec === 'ECC_NIST_EDWARDS25519' ? 'ED25519' : 'ECDSA';
+            return '<div style="display:flex; align-items:center; justify-content:space-between; padding:0.75rem; border-bottom:1px solid #1e2a4a;">' +
+              '<div>' +
+                '<div style="color:#fff; font-weight:600;">' + r.agentId + '</div>' +
+                '<div style="color:#8892b0; font-size:0.8rem;">Account: ' + r.hederaAccountId + ' | Key: ' + r.keyId.substring(0, 8) + '...</div>' +
+              '</div>' +
+              '<div style="display:flex; gap:0.5rem; align-items:center;">' +
+                '<span style="padding:0.2rem 0.5rem; border-radius:4px; background:rgba(0,212,255,0.15); color:#00d4ff; font-size:0.75rem;">' + specLabel + '</span>' +
+                '<span style="color:#8892b0; font-size:0.8rem;">' + r.rotationCount + ' rotations</span>' +
+                '<button class="btn btn-secondary" onclick="rotateKMSKey(\\''+r.agentId+'\\');" style="font-size:0.75rem; padding:0.3rem 0.6rem;">Rotate</button>' +
+              '</div>' +
+            '</div>';
+          }).join('');
+        } else {
+          regsList.innerHTML = '<div style="color:#6a7a9a; padding:1rem; text-align:center;">No KMS-registered agents yet.</div>';
+        }
+      } catch (err) {
+        console.error('Failed to load KMS data:', err);
+      }
+    }
+
+    async function createKMSKey() {
+      try {
+        var resp = await fetch('/api/kms/create-key', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ keySpec: 'ECC_NIST_EDWARDS25519', description: 'Dashboard-created ED25519 key' })
+        });
+        var data = await resp.json();
+        if (data.success) {
+          showToast('KMS key created: ' + data.key.keyId.substring(0, 8) + '...', 'success');
+          loadKMSData();
+        } else {
+          showToast('Failed to create key', 'error');
+        }
+      } catch (err) { showToast('KMS key creation failed', 'error'); }
+    }
+
+    async function registerKMSAgent() {
+      try {
+        var resp = await fetch('/api/kms/register-agent', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: 'KMS-Agent-' + Date.now().toString(36),
+            description: 'Agent registered via dashboard with KMS-managed ED25519 key',
+            keySpec: 'ECC_NIST_EDWARDS25519'
+          })
+        });
+        var data = await resp.json();
+        if (data.success) {
+          showToast('Agent registered with KMS: ' + data.registration.agentId, 'success');
+          loadKMSData();
+        } else {
+          showToast('Agent registration failed', 'error');
+        }
+      } catch (err) { showToast('KMS registration failed', 'error'); }
+    }
+
+    async function rotateKMSKey(agentId) {
+      try {
+        var resp = await fetch('/api/kms/rotate/' + agentId, { method: 'POST' });
+        var data = await resp.json();
+        if (data.success) {
+          showToast('Key rotated for ' + agentId, 'success');
+          loadKMSData();
+        } else {
+          showToast('Key rotation failed: ' + (data.error || 'unknown'), 'error');
+        }
+      } catch (err) { showToast('Key rotation failed', 'error'); }
     }
 
     // Initial load
