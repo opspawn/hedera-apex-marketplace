@@ -30,6 +30,7 @@ const TEST_CONFIG: ConnectionHandlerConfig = {
   outboundTopicId: '0.0.7854275',
   accountId: '0.0.7854018',
   pollIntervalMs: 60000, // Long interval to prevent auto-polling in tests
+  autoAccept: false, // Disable auto-accept for unit tests that manage accept manually
 };
 
 describe('ConnectionHandler', () => {

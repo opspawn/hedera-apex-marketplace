@@ -81,6 +81,7 @@ describe('Connection handler endpoint logic', () => {
       inboundTopicId: '0.0.123',
       outboundTopicId: '0.0.456',
       accountId: '0.0.789',
+      autoAccept: false,
     }, mock);
 
     await handler.pollInboundTopic();
@@ -101,6 +102,7 @@ describe('Connection handler endpoint logic', () => {
       inboundTopicId: '0.0.123',
       outboundTopicId: '0.0.456',
       accountId: '0.0.789',
+      autoAccept: false,
     }, mock);
 
     await handler.pollInboundTopic();

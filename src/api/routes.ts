@@ -40,8 +40,8 @@ import { TrustScoreTracker } from '../marketplace/trust-score';
 import { AnalyticsTracker } from '../marketplace/analytics';
 
 // Test count managed as a constant — updated each sprint
-const TEST_COUNT = 1760;
-const VERSION = '0.30.0';
+const TEST_COUNT = 1880;
+const VERSION = '0.31.0';
 const STANDARDS = ['HCS-10', 'HCS-11', 'HCS-14', 'HCS-19', 'HCS-20', 'HCS-26'];
 
 export function createRouter(
@@ -1713,6 +1713,257 @@ export function createRouter(
   });
 
   // ==========================================
+  // MCP Server — JSON-RPC 2.0 tool invocation
+  // ==========================================
+
+  // POST /mcp — Full MCP server endpoint for tool invocation (JSON-RPC 2.0)
+  router.post('/mcp', async (req: Request, res: Response) => {
+    try {
+      const { jsonrpc, id, method, params } = req.body;
+
+      // Validate JSON-RPC 2.0 envelope
+      if (jsonrpc !== '2.0' || !method) {
+        res.status(400).json({
+          jsonrpc: '2.0',
+          id: id || null,
+          error: { code: -32600, message: 'Invalid JSON-RPC 2.0 request' },
+        });
+        return;
+      }
+
+      // MCP initialize handshake
+      if (method === 'initialize') {
+        res.json({
+          jsonrpc: '2.0',
+          id,
+          result: {
+            protocolVersion: '2024-11-05',
+            capabilities: { tools: { listChanged: false } },
+            serverInfo: {
+              name: 'hedera-agent-marketplace',
+              version: VERSION,
+            },
+          },
+        });
+        return;
+      }
+
+      // MCP tools/list
+      if (method === 'tools/list') {
+        const agentCount = marketplace ? marketplace.getAgentCount() : registry.getCount();
+        res.json({
+          jsonrpc: '2.0',
+          id,
+          result: {
+            tools: [
+              { name: 'search_agents', description: 'Search and discover agents in the marketplace', inputSchema: { type: 'object', properties: { q: { type: 'string' }, category: { type: 'string' }, limit: { type: 'number' } } } },
+              { name: 'get_agent_details', description: 'Get detailed information about a specific agent', inputSchema: { type: 'object', properties: { agent_id: { type: 'string' } }, required: ['agent_id'] } },
+              { name: 'register_agent', description: 'Register a new agent in the marketplace', inputSchema: { type: 'object', properties: { name: { type: 'string' }, description: { type: 'string' }, endpoint: { type: 'string' }, skills: { type: 'array' } }, required: ['name', 'description'] } },
+              { name: 'hire_agent', description: 'Hire an agent for a specific task', inputSchema: { type: 'object', properties: { agent_id: { type: 'string' }, skill_id: { type: 'string' }, input: { type: 'object' } }, required: ['agent_id', 'skill_id'] } },
+              { name: 'get_trust_score', description: 'Get trust score for an agent', inputSchema: { type: 'object', properties: { agent_id: { type: 'string' } }, required: ['agent_id'] } },
+            ],
+            server: { name: 'hedera-agent-marketplace', version: VERSION, registered_agents: agentCount },
+          },
+        });
+        return;
+      }
+
+      // MCP tools/call — execute a tool
+      if (method === 'tools/call') {
+        const toolName = params?.name;
+        const toolArgs = params?.arguments || {};
+
+        switch (toolName) {
+          case 'search_agents': {
+            if (marketplace) {
+              const result = await marketplace.discoverAgents({
+                q: toolArgs.q as string,
+                category: toolArgs.category as string,
+                limit: (toolArgs.limit as number) || 10,
+              });
+              res.json({
+                jsonrpc: '2.0', id,
+                result: { content: [{ type: 'text', text: JSON.stringify({ agents: result.agents.map(a => ({ name: a.agent.name, id: a.agent.agent_id, reputation: a.agent.reputation_score })), total: result.total }) }] },
+              });
+            } else {
+              const searchResult = await registry.searchAgents({ q: toolArgs.q as string || '' });
+              res.json({
+                jsonrpc: '2.0', id,
+                result: { content: [{ type: 'text', text: JSON.stringify({ agents: searchResult.agents.map(a => ({ name: a.name, id: a.agent_id })), total: searchResult.total }) }] },
+              });
+            }
+            return;
+          }
+
+          case 'get_agent_details': {
+            const agentId = toolArgs.agent_id as string;
+            if (!agentId) {
+              res.json({ jsonrpc: '2.0', id, error: { code: -32602, message: 'agent_id is required' } });
+              return;
+            }
+            if (marketplace) {
+              const profile = await marketplace.getAgentProfile(agentId);
+              if (profile) {
+                const trust = trustTracker ? trustTracker.getTrustScore(agentId, profile.agent.reputation_score) : null;
+                res.json({
+                  jsonrpc: '2.0', id,
+                  result: { content: [{ type: 'text', text: JSON.stringify({ agent: profile.agent, trust }) }] },
+                });
+              } else {
+                res.json({ jsonrpc: '2.0', id, result: { content: [{ type: 'text', text: JSON.stringify({ error: 'Agent not found' }) }] } });
+              }
+            } else {
+              const agent = await registry.getAgent(agentId);
+              res.json({
+                jsonrpc: '2.0', id,
+                result: { content: [{ type: 'text', text: JSON.stringify(agent || { error: 'Agent not found' }) }] },
+              });
+            }
+            return;
+          }
+
+          case 'register_agent': {
+            const regData: AgentRegistration = {
+              name: (toolArgs.name as string) || 'MCP Agent',
+              description: (toolArgs.description as string) || 'Agent registered via MCP',
+              endpoint: (toolArgs.endpoint as string) || 'https://mcp-client.local',
+              skills: (toolArgs.skills as AgentRegistration['skills']) || [{
+                id: `sk-mcp-${Date.now()}`, name: 'mcp-skill', description: 'Default skill',
+                category: 'general', tags: ['mcp'], input_schema: { type: 'object' },
+                output_schema: { type: 'object' }, pricing: { amount: 1, token: 'HBAR', unit: 'per_call' as const },
+              }],
+              protocols: ['mcp', 'hcs-10'],
+              payment_address: '0.0.mcp-client',
+            };
+            const agent = await registry.register(regData);
+            res.json({
+              jsonrpc: '2.0', id,
+              result: { content: [{ type: 'text', text: JSON.stringify({ agent_id: agent.agent_id, name: agent.name, status: 'registered' }) }] },
+            });
+            return;
+          }
+
+          case 'hire_agent': {
+            const hireAgentId = toolArgs.agent_id as string;
+            const hireSkillId = toolArgs.skill_id as string;
+            if (!hireAgentId || !hireSkillId) {
+              res.json({ jsonrpc: '2.0', id, error: { code: -32602, message: 'agent_id and skill_id are required' } });
+              return;
+            }
+            if (marketplace) {
+              const hireResult = await marketplace.verifyAndHire({ clientId: 'mcp-client', agentId: hireAgentId, skillId: hireSkillId, input: toolArgs.input as Record<string, unknown> || {} });
+              res.json({
+                jsonrpc: '2.0', id,
+                result: { content: [{ type: 'text', text: JSON.stringify({ task_id: hireResult.task_id, status: hireResult.status }) }] },
+              });
+            } else {
+              res.json({ jsonrpc: '2.0', id, result: { content: [{ type: 'text', text: JSON.stringify({ error: 'Marketplace not available' }) }] } });
+            }
+            return;
+          }
+
+          case 'get_trust_score': {
+            const trustAgentId = toolArgs.agent_id as string;
+            if (!trustAgentId) {
+              res.json({ jsonrpc: '2.0', id, error: { code: -32602, message: 'agent_id is required' } });
+              return;
+            }
+            const trust = trustTracker ? trustTracker.getTrustScore(trustAgentId) : { trust_score: 0, level: 'new' };
+            res.json({
+              jsonrpc: '2.0', id,
+              result: { content: [{ type: 'text', text: JSON.stringify(trust) }] },
+            });
+            return;
+          }
+
+          default:
+            res.json({ jsonrpc: '2.0', id, error: { code: -32601, message: `Unknown tool: ${toolName}` } });
+            return;
+        }
+      }
+
+      // Unknown method
+      res.json({
+        jsonrpc: '2.0',
+        id,
+        error: { code: -32601, message: `Method ${method} not supported` },
+      });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      res.status(500).json({
+        jsonrpc: '2.0',
+        id: req.body?.id || null,
+        error: { code: -32603, message },
+      });
+    }
+  });
+
+  // ==========================================
+  // Reachability Status — Shows all protocol connectivity
+  // ==========================================
+  router.get('/api/reachability', (_req: Request, res: Response) => {
+    const agentCount = marketplace ? marketplace.getAgentCount() : registry.getCount();
+    const connStatus = connectionHandler ? connectionHandler.getHandlerStatus() : null;
+    const activeConns = connectionHandler ? connectionHandler.getActiveConnections() : [];
+    const pendingReqs = connectionHandler ? connectionHandler.getPendingRequests() : [];
+    const recentMessages = connectionHandler ? connectionHandler.getRecentInboundLog() : [];
+
+    res.json({
+      version: VERSION,
+      timestamp: new Date().toISOString(),
+      protocols: {
+        mcp: {
+          status: 'active',
+          endpoint: '/mcp',
+          tools_endpoint: '/api/mcp/tools',
+          transport: 'json-rpc-2.0-http',
+          tools_available: 5,
+          description: 'MCP server accepting tool invocations via JSON-RPC 2.0',
+        },
+        a2a: {
+          status: 'active',
+          agent_card: '/.well-known/agent.json',
+          tasks_endpoint: '/api/a2a/tasks',
+          protocol: 'google-a2a',
+          skills: 4,
+          description: 'A2A agent card and task delegation via JSON-RPC 2.0',
+        },
+        hcs10: {
+          status: connStatus?.running ? 'listening' : 'inactive',
+          inbound_topic: connStatus?.inbound_topic || 'not configured',
+          active_connections: connStatus?.active_connections || 0,
+          pending_requests: connStatus?.pending_requests || 0,
+          total_messages: connStatus?.total_messages || 0,
+          auto_accept: true,
+          natural_language: true,
+          description: 'HCS-10 topic-based agent connections with auto-accept and NL response',
+        },
+      },
+      connections: {
+        active: activeConns.map(c => ({
+          id: c.id,
+          remote_account: c.remote_account,
+          connection_topic: c.connection_topic,
+          status: c.status,
+          messages_exchanged: c.messages_exchanged,
+          last_message_at: c.last_message_at,
+        })),
+        pending: pendingReqs.map(r => ({
+          id: r.id,
+          from_account: r.from_account,
+          timestamp: r.timestamp,
+        })),
+      },
+      recent_inbound: recentMessages.slice(0, 20),
+      summary: {
+        total_agents: agentCount,
+        reachable_via: ['MCP', 'A2A', 'HCS-10'],
+        chat_endpoint: '/api/chat/agent',
+      },
+    });
+  });
+
+  // ==========================================
   // Enhanced Analytics with Chart Data
   // ==========================================
 
@@ -1767,10 +2018,15 @@ export function createRouter(
   const agentCardPayload = {
     name: 'Hedera Agent Marketplace',
     version: VERSION,
-    description: 'Decentralized agent marketplace on Hedera — agent registration, discovery, payments, and reputation using HCS-10/11/14/19/20/26 standards',
+    description: 'Decentralized agent marketplace on Hedera — agent registration, discovery, payments, and reputation using HCS-10/11/14/19/20/26 standards. Reachable via MCP, A2A, and HCS-10.',
     url: 'https://hedera-apex.opspawn.com',
-    capabilities: ['agent-registration', 'agent-discovery', 'privacy-consent', 'skill-publishing', 'reputation-points', 'hcs-10-connections', 'chat-relay', 'agent-connections', 'full-flow-demo', 'demo-recording', 'natural-language-chat', 'trust-scores', 'analytics-dashboard', 'a2a-protocol', 'mcp-tools', 'multi-protocol-interop'],
+    capabilities: ['agent-registration', 'agent-discovery', 'privacy-consent', 'skill-publishing', 'reputation-points', 'hcs-10-connections', 'chat-relay', 'agent-connections', 'full-flow-demo', 'demo-recording', 'natural-language-chat', 'trust-scores', 'analytics-dashboard', 'a2a-protocol', 'mcp-server', 'mcp-tools', 'multi-protocol-interop', 'auto-accept-connections', 'agent-reachability'],
     protocols: ['hcs-10', 'hcs-11', 'hcs-14', 'hcs-19', 'hcs-20', 'hcs-26', 'a2a', 'mcp'],
+    reachability: {
+      mcp: { endpoint: '/mcp', transport: 'json-rpc-2.0-http', tools: 5 },
+      a2a: { agent_card: '/.well-known/agent.json', tasks: '/api/a2a/tasks' },
+      hcs10: { auto_accept: true, natural_language: true, chat: '/api/chat/agent' },
+    },
     endpoints: {
       health: '/health',
       agents: '/api/agents',
@@ -1786,7 +2042,10 @@ export function createRouter(
       trust: '/api/agents/:id/trust',
       a2a_agent_card: '/api/a2a/agent-card',
       a2a_tasks: '/api/a2a/tasks',
+      mcp_server: '/mcp',
       mcp_tools: '/api/mcp/tools',
+      reachability: '/api/reachability',
+      chat: '/api/chat/agent',
     },
     contact: {
       github: 'https://github.com/opspawn',

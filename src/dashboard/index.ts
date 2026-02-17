@@ -601,6 +601,7 @@ function getDashboardHTML(): string {
     <div class="nav-tab" data-view="connections" role="tab" tabindex="0" aria-selected="false" aria-controls="view-connections" style="color:#f59e0b;">Connections</div>
     <div class="nav-tab" data-view="demo" role="tab" tabindex="0" aria-selected="false" aria-controls="view-demo" style="color:#00c853;">Live Demo</div>
     <div class="nav-tab" data-view="analytics" role="tab" tabindex="0" aria-selected="false" aria-controls="view-analytics" style="color:#f59e0b;">Analytics</div>
+    <div class="nav-tab" data-view="reachability" role="tab" tabindex="0" aria-selected="false" aria-controls="view-reachability" style="color:#00c853;">Reachability</div>
     <a href="/chat" class="nav-tab" style="color:#00d4ff; text-decoration:none;" title="Chat with Hedera Agent">&#x1F4AC; Agent Chat</a>
   </nav>
 
@@ -956,6 +957,108 @@ function getDashboardHTML(): string {
       </div>
     </div>
 
+    <!-- Reachability View -->
+    <div class="view" id="view-reachability" role="tabpanel" aria-labelledby="tab-reachability">
+      <h2 style="color:#fff; margin-bottom:1rem;">Agent Reachability &amp; Connectivity</h2>
+      <p style="color:#8892b0; margin-bottom:1.5rem;">External agents and users can reach this marketplace via three protocols. All connections are auto-accepted with natural language responses.</p>
+
+      <div class="stats">
+        <div class="stat-card">
+          <span class="stat-icon">&#x1F527;</span>
+          <div class="value" id="reach-mcp-tools">5</div>
+          <div class="label">MCP Tools</div>
+        </div>
+        <div class="stat-card">
+          <span class="stat-icon">&#x1F916;</span>
+          <div class="value" id="reach-a2a-skills">4</div>
+          <div class="label">A2A Skills</div>
+        </div>
+        <div class="stat-card">
+          <span class="stat-icon">&#x1F517;</span>
+          <div class="value" id="reach-hcs10-conns">0</div>
+          <div class="label">HCS-10 Connections</div>
+        </div>
+        <div class="stat-card">
+          <span class="stat-icon">&#x1F4E8;</span>
+          <div class="value" id="reach-inbound-msgs">0</div>
+          <div class="label">Inbound Messages</div>
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:1.5rem; margin-top:1.5rem;">
+        <!-- MCP Server Status -->
+        <div style="background:#111827; border-radius:12px; padding:1.5rem; border:1px solid #1e2a4a;">
+          <h3 style="color:#fff; margin-bottom:1rem; font-size:1rem;">&#x1F527; MCP Server</h3>
+          <div style="padding:0.5rem 0; border-bottom:1px solid #1e2a4a; display:flex; justify-content:space-between;">
+            <span style="color:#8892b0; font-size:0.85rem;">Status</span>
+            <span id="reach-mcp-status" style="color:#00c853; font-size:0.85rem; font-weight:600;">Active</span>
+          </div>
+          <div style="padding:0.5rem 0; border-bottom:1px solid #1e2a4a; display:flex; justify-content:space-between;">
+            <span style="color:#8892b0; font-size:0.85rem;">Endpoint</span>
+            <code style="color:#00d4ff; font-size:0.8rem; background:#0d1528; padding:0.1rem 0.4rem; border-radius:4px;">/mcp</code>
+          </div>
+          <div style="padding:0.5rem 0; border-bottom:1px solid #1e2a4a; display:flex; justify-content:space-between;">
+            <span style="color:#8892b0; font-size:0.85rem;">Transport</span>
+            <span style="color:#e0e0e0; font-size:0.85rem;">JSON-RPC 2.0 / HTTP</span>
+          </div>
+          <div style="padding:0.5rem 0; display:flex; justify-content:space-between;">
+            <span style="color:#8892b0; font-size:0.85rem;">Tools</span>
+            <span style="color:#e0e0e0; font-size:0.85rem;">search_agents, get_agent_details, register_agent, hire_agent, get_trust_score</span>
+          </div>
+        </div>
+
+        <!-- A2A Agent Card -->
+        <div style="background:#111827; border-radius:12px; padding:1.5rem; border:1px solid #1e2a4a;">
+          <h3 style="color:#fff; margin-bottom:1rem; font-size:1rem;">&#x1F916; A2A Agent Card</h3>
+          <div style="padding:0.5rem 0; border-bottom:1px solid #1e2a4a; display:flex; justify-content:space-between;">
+            <span style="color:#8892b0; font-size:0.85rem;">Status</span>
+            <span id="reach-a2a-status" style="color:#00c853; font-size:0.85rem; font-weight:600;">Active</span>
+          </div>
+          <div style="padding:0.5rem 0; border-bottom:1px solid #1e2a4a; display:flex; justify-content:space-between;">
+            <span style="color:#8892b0; font-size:0.85rem;">Agent Card</span>
+            <a href="/.well-known/agent.json" style="color:#00d4ff; font-size:0.8rem; text-decoration:none;">/.well-known/agent.json</a>
+          </div>
+          <div style="padding:0.5rem 0; border-bottom:1px solid #1e2a4a; display:flex; justify-content:space-between;">
+            <span style="color:#8892b0; font-size:0.85rem;">Tasks Endpoint</span>
+            <code style="color:#00d4ff; font-size:0.8rem; background:#0d1528; padding:0.1rem 0.4rem; border-radius:4px;">/api/a2a/tasks</code>
+          </div>
+          <div style="padding:0.5rem 0; display:flex; justify-content:space-between;">
+            <span style="color:#8892b0; font-size:0.85rem;">Protocol</span>
+            <span style="color:#e0e0e0; font-size:0.85rem;">Google A2A (JSON-RPC 2.0)</span>
+          </div>
+        </div>
+
+        <!-- HCS-10 Connections -->
+        <div style="background:#111827; border-radius:12px; padding:1.5rem; border:1px solid #1e2a4a;">
+          <h3 style="color:#fff; margin-bottom:1rem; font-size:1rem;">&#x1F517; HCS-10 Connections</h3>
+          <div style="padding:0.5rem 0; border-bottom:1px solid #1e2a4a; display:flex; justify-content:space-between;">
+            <span style="color:#8892b0; font-size:0.85rem;">Listener</span>
+            <span id="reach-hcs10-status" style="color:#00c853; font-size:0.85rem; font-weight:600;">Listening</span>
+          </div>
+          <div style="padding:0.5rem 0; border-bottom:1px solid #1e2a4a; display:flex; justify-content:space-between;">
+            <span style="color:#8892b0; font-size:0.85rem;">Auto-Accept</span>
+            <span id="reach-hcs10-auto" style="color:#00c853; font-size:0.85rem;">Enabled</span>
+          </div>
+          <div style="padding:0.5rem 0; border-bottom:1px solid #1e2a4a; display:flex; justify-content:space-between;">
+            <span style="color:#8892b0; font-size:0.85rem;">Natural Language</span>
+            <span style="color:#00c853; font-size:0.85rem;">Enabled</span>
+          </div>
+          <div style="padding:0.5rem 0; display:flex; justify-content:space-between;">
+            <span style="color:#8892b0; font-size:0.85rem;">Pending</span>
+            <span id="reach-hcs10-pending" style="color:#ffaa00; font-size:0.85rem;">0</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent Inbound Messages -->
+      <div style="background:#111827; border-radius:12px; padding:1.5rem; border:1px solid #1e2a4a; margin-top:1.5rem;">
+        <h3 style="color:#fff; margin-bottom:1rem; font-size:1rem;">Recent Inbound Activity</h3>
+        <div id="reach-inbound-log" style="max-height:300px; overflow-y:auto;">
+          <p style="color:#6a7a9a; font-size:0.85rem;">No inbound messages yet. When agents connect via HCS-10, A2A, or MCP, activity will appear here.</p>
+        </div>
+      </div>
+    </div>
+
   </div>
 
   <!-- Agent Detail Modal -->
@@ -1010,6 +1113,7 @@ function getDashboardHTML(): string {
       document.getElementById('view-' + tab.dataset.view).classList.add('active');
       if (tab.dataset.view === 'connections') { loadConnections(); }
       if (tab.dataset.view === 'analytics') { loadAnalytics(); }
+      if (tab.dataset.view === 'reachability') { loadReachability(); }
     }
 
     // Load analytics data
@@ -1630,6 +1734,51 @@ function getDashboardHTML(): string {
         }
       } catch (e) {
         document.getElementById('connections-list').innerHTML = '<div style="color:#ff4444; font-size:0.85rem;">Error loading connections: ' + e.message + '</div>';
+      }
+    }
+
+    async function loadReachability() {
+      try {
+        var resp = await fetch('/api/reachability');
+        var data = await resp.json();
+        var p = data.protocols || {};
+        // MCP
+        document.getElementById('reach-mcp-tools').textContent = (p.mcp && p.mcp.tools_available) || 5;
+        document.getElementById('reach-mcp-status').textContent = (p.mcp && p.mcp.status) || 'active';
+        document.getElementById('reach-mcp-status').style.color = p.mcp && p.mcp.status === 'active' ? '#00c853' : '#ff4444';
+        // A2A
+        document.getElementById('reach-a2a-skills').textContent = (p.a2a && p.a2a.skills) || 4;
+        document.getElementById('reach-a2a-status').textContent = (p.a2a && p.a2a.status) || 'active';
+        document.getElementById('reach-a2a-status').style.color = p.a2a && p.a2a.status === 'active' ? '#00c853' : '#ff4444';
+        // HCS-10
+        var hcs = p.hcs10 || {};
+        document.getElementById('reach-hcs10-conns').textContent = hcs.active_connections || 0;
+        document.getElementById('reach-hcs10-status').textContent = hcs.status === 'listening' ? 'Listening' : (hcs.status || 'Inactive');
+        document.getElementById('reach-hcs10-status').style.color = hcs.status === 'listening' ? '#00c853' : '#ffaa00';
+        document.getElementById('reach-hcs10-auto').textContent = hcs.auto_accept ? 'Enabled' : 'Disabled';
+        document.getElementById('reach-hcs10-auto').style.color = hcs.auto_accept ? '#00c853' : '#ff4444';
+        document.getElementById('reach-hcs10-pending').textContent = hcs.pending_requests || 0;
+        document.getElementById('reach-inbound-msgs').textContent = hcs.total_messages || 0;
+        // Recent inbound
+        var inbound = data.recent_inbound || [];
+        var logDiv = document.getElementById('reach-inbound-log');
+        if (inbound.length === 0) {
+          logDiv.innerHTML = '<p style="color:#6a7a9a; font-size:0.85rem;">No inbound messages yet. When agents connect via HCS-10, A2A, or MCP, activity will appear here.</p>';
+        } else {
+          logDiv.innerHTML = inbound.reverse().map(function(entry) {
+            var typeColor = entry.type === 'connection_request' ? '#00d4ff' : entry.type === 'message' ? '#a855f7' : '#6a7a9a';
+            var html = '<div style="padding:0.6rem; margin-bottom:0.4rem; background:#0d1528; border-radius:6px; border-left:3px solid ' + typeColor + ';">';
+            html += '<div style="display:flex; justify-content:space-between;"><span style="color:' + typeColor + '; font-size:0.8rem; font-weight:600; text-transform:uppercase;">' + entry.type + '</span><span style="color:#4a5a7a; font-size:0.7rem;">' + entry.timestamp + '</span></div>';
+            html += '<div style="color:#e0e0e0; font-size:0.8rem; margin-top:0.25rem;">From: ' + entry.from + '</div>';
+            html += '<div style="color:#8892b0; font-size:0.75rem; margin-top:0.15rem;">' + (entry.content || '').substring(0, 120) + '</div>';
+            if (entry.auto_accepted) html += '<span style="color:#00c853; font-size:0.7rem;">&#x2705; Auto-accepted</span> ';
+            if (entry.nl_response) html += '<div style="color:#00d4ff; font-size:0.7rem; margin-top:0.15rem;">NL: ' + entry.nl_response.substring(0, 80) + '...</div>';
+            html += '</div>';
+            return html;
+          }).join('');
+        }
+      } catch (e) {
+        document.getElementById('reach-inbound-log').innerHTML = '<div style="color:#ff4444; font-size:0.85rem;">Error loading reachability data: ' + e.message + '</div>';
       }
     }
 

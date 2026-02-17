@@ -42,11 +42,22 @@ export interface ConnectionMessage {
   sequence_number?: number;
 }
 
+export interface InboundLogEntry {
+  type: 'connection_request' | 'message' | 'connection_close' | 'unknown';
+  from: string;
+  content: string;
+  timestamp: string;
+  sequence_number: number;
+  auto_accepted?: boolean;
+  nl_response?: string;
+}
+
 export interface ConnectionHandlerConfig {
   inboundTopicId: string;
   outboundTopicId: string;
   accountId: string;
   pollIntervalMs?: number;
+  autoAccept?: boolean;
 }
 
 export class ConnectionHandler {
@@ -55,14 +66,17 @@ export class ConnectionHandler {
   private connections: Map<string, ActiveConnection> = new Map();
   private pendingRequests: Map<string, ConnectionRequest> = new Map();
   private messageLog: ConnectionMessage[] = [];
+  private inboundLog: InboundLogEntry[] = [];
   private pollTimer: ReturnType<typeof setInterval> | null = null;
   private running = false;
   private processedSequences: Set<number> = new Set();
   private connectionCounter = 0;
+  private autoAccept: boolean;
 
   constructor(config: ConnectionHandlerConfig, hcs10: HCS10Client) {
     this.config = config;
     this.hcs10 = hcs10;
+    this.autoAccept = config.autoAccept !== false; // Default: auto-accept ON
   }
 
   /**
@@ -102,6 +116,8 @@ export class ConnectionHandler {
 
   /**
    * Poll the inbound topic for new connection requests.
+   * With autoAccept enabled, connections are automatically accepted and
+   * a natural language greeting is sent on the new connection.
    */
   async pollInboundTopic(): Promise<ConnectionRequest[]> {
     const messages = await this.hcs10.readMessages(this.config.inboundTopicId, 25);
@@ -113,21 +129,113 @@ export class ConnectionHandler {
       this.processedSequences.add(msg.sequenceNumber);
 
       const content = msg.content;
-      if (content.p === 'hcs-10' && content.op === 'connection_request') {
-        const request: ConnectionRequest = {
-          id: `conn-req-${msg.sequenceNumber}`,
-          from_account: content.account_id as string || 'unknown',
-          from_inbound_topic: content.inbound_topic as string || '',
-          message: content.m as string || undefined,
+
+      // Log all inbound messages for demo/audit purposes
+      if (content.p === 'hcs-10') {
+        const logEntry: InboundLogEntry = {
+          type: (content.op === 'connection_request' ? 'connection_request'
+            : content.op === 'message' ? 'message'
+            : content.op === 'connection_close' ? 'connection_close'
+            : 'unknown') as InboundLogEntry['type'],
+          from: (content.account_id as string) || (content.from as string) || 'unknown',
+          content: (content.m as string) || (content.content as string) || JSON.stringify(content),
           timestamp: msg.timestamp,
           sequence_number: msg.sequenceNumber,
         };
-        this.pendingRequests.set(request.id, request);
-        newRequests.push(request);
+
+        if (content.op === 'connection_request') {
+          const request: ConnectionRequest = {
+            id: `conn-req-${msg.sequenceNumber}`,
+            from_account: content.account_id as string || 'unknown',
+            from_inbound_topic: content.inbound_topic as string || '',
+            message: content.m as string || undefined,
+            timestamp: msg.timestamp,
+            sequence_number: msg.sequenceNumber,
+          };
+
+          if (this.autoAccept) {
+            // Auto-accept the connection
+            this.pendingRequests.set(request.id, request);
+            try {
+              const conn = await this.acceptConnection(request.id);
+              logEntry.auto_accepted = true;
+
+              // Send natural language greeting on the new connection
+              const greeting = this.generateNLGreeting(request);
+              await this.sendMessage(conn.id, greeting);
+              logEntry.nl_response = greeting;
+            } catch {
+              // Still add to pending if auto-accept fails
+              this.pendingRequests.set(request.id, request);
+              logEntry.auto_accepted = false;
+            }
+          } else {
+            this.pendingRequests.set(request.id, request);
+          }
+
+          newRequests.push(request);
+        } else if (content.op === 'message') {
+          // Handle inbound messages on existing connections — respond with NL
+          const inboundContent = (content.content as string) || (content.m as string) || '';
+          if (inboundContent) {
+            const nlResponse = this.generateNLResponse(inboundContent);
+            logEntry.nl_response = nlResponse;
+            // Find matching connection and respond
+            for (const conn of this.connections.values()) {
+              if (conn.status === 'active' && conn.remote_account === ((content.from as string) || '')) {
+                try {
+                  await this.sendMessage(conn.id, nlResponse);
+                } catch { /* best effort */ }
+                break;
+              }
+            }
+          }
+        }
+
+        this.inboundLog.push(logEntry);
+        // Keep log bounded
+        if (this.inboundLog.length > 200) {
+          this.inboundLog = this.inboundLog.slice(-100);
+        }
       }
     }
 
     return newRequests;
+  }
+
+  /**
+   * Generate a natural language greeting for a new connection.
+   */
+  private generateNLGreeting(request: ConnectionRequest): string {
+    const who = request.from_account !== 'unknown' ? ` from ${request.from_account}` : '';
+    const msg = request.message ? ` You said: "${request.message}".` : '';
+    return `Hello${who}! Welcome to the Hedera Agent Marketplace. I'm ready to help you discover agents, register new ones, or delegate tasks.${msg} What would you like to do?`;
+  }
+
+  /**
+   * Generate a natural language response to an inbound message.
+   */
+  private generateNLResponse(message: string): string {
+    const lower = message.toLowerCase();
+    if (lower.includes('hello') || lower.includes('hi') || lower.includes('hey')) {
+      return 'Hello! I\'m the Hedera Agent Marketplace. I can help you find agents, register new ones, check trust scores, or delegate tasks. What would you like to do?';
+    }
+    if (lower.includes('search') || lower.includes('find') || lower.includes('discover')) {
+      return 'I can search the marketplace for agents. Try asking: "Find agents with security skills" or use the /api/marketplace/discover endpoint directly.';
+    }
+    if (lower.includes('register') || lower.includes('sign up') || lower.includes('join')) {
+      return 'To register a new agent, provide a name, description, skills, and endpoint. Use POST /api/marketplace/register or send me the details in natural language.';
+    }
+    if (lower.includes('trust') || lower.includes('score') || lower.includes('reputation')) {
+      return 'I track trust scores based on agent age, connections, completed tasks, and privacy compliance. Use GET /api/agents/:id/trust to check a specific agent.';
+    }
+    if (lower.includes('hire') || lower.includes('task') || lower.includes('delegate')) {
+      return 'To hire an agent, specify the agent_id and skill_id. Use POST /api/marketplace/hire or the A2A protocol at /api/a2a/tasks.';
+    }
+    if (lower.includes('help') || lower.includes('what can you do')) {
+      return 'I\'m the Hedera Agent Marketplace. I support: agent registration, discovery, hiring, trust scoring, HCS-10 connections, A2A protocol, and MCP tools. Ask me anything!';
+    }
+    return `Thank you for your message. I'm the Hedera Agent Marketplace — I can help with agent discovery, registration, hiring, and trust evaluation. Available protocols: HCS-10, A2A, MCP. How can I assist you?`;
   }
 
   /**
@@ -284,6 +392,8 @@ export class ConnectionHandler {
     active_connections: number;
     pending_requests: number;
     total_messages: number;
+    auto_accept: boolean;
+    inbound_log_size: number;
   } {
     return {
       running: this.running,
@@ -291,6 +401,29 @@ export class ConnectionHandler {
       active_connections: this.getActiveConnections().length,
       pending_requests: this.pendingRequests.size,
       total_messages: this.messageLog.length,
+      auto_accept: this.autoAccept,
+      inbound_log_size: this.inboundLog.length,
     };
+  }
+
+  /**
+   * Get the recent inbound log entries for dashboard display.
+   */
+  getRecentInboundLog(limit: number = 50): InboundLogEntry[] {
+    return this.inboundLog.slice(-limit);
+  }
+
+  /**
+   * Check if auto-accept is enabled.
+   */
+  isAutoAcceptEnabled(): boolean {
+    return this.autoAccept;
+  }
+
+  /**
+   * Enable or disable auto-accept.
+   */
+  setAutoAccept(enabled: boolean): void {
+    this.autoAccept = enabled;
   }
 }

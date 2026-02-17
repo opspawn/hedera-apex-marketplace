@@ -24,7 +24,7 @@ export type {
 } from './registry-broker';
 
 export { ConnectionHandler } from './connection-handler';
-export type { ConnectionHandlerConfig, ConnectionRequest, ActiveConnection, ConnectionMessage } from './connection-handler';
+export type { ConnectionHandlerConfig, ConnectionRequest, ActiveConnection, ConnectionMessage, InboundLogEntry } from './connection-handler';
 
 export { AgentFeedbackManager } from './agent-feedback';
 export type {

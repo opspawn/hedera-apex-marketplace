@@ -35,6 +35,7 @@ describe('Connection Lifecycle', () => {
       outboundTopicId: '0.0.7854275',
       accountId: '0.0.7854018',
       pollIntervalMs: 60000,
+      autoAccept: false, // Disable auto-accept for manual lifecycle tests
     }, mockHcs10);
   });
 
@@ -157,6 +158,7 @@ describe('Connection polling behavior', () => {
       inboundTopicId: '0.0.123',
       outboundTopicId: '0.0.456',
       accountId: '0.0.789',
+      autoAccept: false,
     }, mockHcs10);
 
     mockHcs10.readMessages.mockResolvedValueOnce([
