@@ -127,25 +127,25 @@ describe('POST /api/demo/full-flow', () => {
 });
 
 describe('Version and test count updates', () => {
-  it('health endpoint should report v0.21.0', async () => {
+  it('health endpoint should report v0.22.0', async () => {
     const app = createTestApp();
     const res = await request(app, 'GET', '/health');
 
     expect(res.status).toBe(200);
-    expect(res.body.version).toBe('0.21.0');
+    expect(res.body.version).toBe('0.22.0');
   });
 
   it('health endpoint should report test count >= 1450', async () => {
     const app = createTestApp();
     const res = await request(app, 'GET', '/health');
 
-    expect(res.body.test_count).toBeGreaterThanOrEqual(1450);
+    expect(res.body.test_count).toBeGreaterThanOrEqual(1455);
   });
 
-  it('stats endpoint should report v0.21.0', async () => {
+  it('stats endpoint should report v0.22.0', async () => {
     const app = createTestApp();
     const res = await request(app, 'GET', '/api/stats');
 
-    expect(res.body.version).toBe('0.21.0');
+    expect(res.body.version).toBe('0.22.0');
   });
 });

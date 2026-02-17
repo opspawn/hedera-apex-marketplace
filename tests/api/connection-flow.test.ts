@@ -240,7 +240,7 @@ describe('Agent Connection Flow API', () => {
   describe('version update', () => {
     test('should report version 0.20.0', async () => {
       const res = await request(app, 'GET', '/api/health');
-      expect(res.body.version).toBe('0.21.0');
+      expect(res.body.version).toBe('0.22.0');
     });
 
     test('should report updated test count', async () => {

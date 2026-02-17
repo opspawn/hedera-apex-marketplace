@@ -2092,7 +2092,7 @@ function getDemoFlowHTML(): string {
   <div class="header">
     <div style="display: flex; align-items: center; gap: 12px;">
       <h1>Hedera Agent Marketplace</h1>
-      <span class="badge">v0.21.0</span>
+      <span class="badge">v0.22.0</span>
     </div>
     <nav>
       <a href="/">Dashboard</a>

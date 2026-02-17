@@ -129,6 +129,34 @@ npx ts-node src/demo/recorder.ts
 # Outputs demo-recording.json with timestamped step data
 ```
 
+### Full End-to-End Demo Flow (New in v0.22.0)
+
+The `/api/demo/full-flow` endpoint runs a complete 6-step marketplace pipeline:
+
+1. **Register Agent** — Create agent with HCS-19 identity and DID
+2. **Publish Skills** — Register skills via HCS-26 registry
+3. **Discover Agents** — Search via local marketplace + Registry Broker
+4. **Connect Agents** — Establish HCS-10 connection
+5. **Execute Task** — Run task via chat relay session
+6. **Submit Feedback** — Award HCS-20 reputation points (175 total)
+
+```bash
+# Run the full flow
+curl -X POST http://localhost:3000/api/demo/full-flow
+
+# Interactive dashboard
+open http://localhost:3000/demo-flow
+```
+
+Returns step-by-step results with timing, status, and data for each phase.
+
+### Current Stats
+
+- **Tests**: 1455+ (0 failures)
+- **HCS Standards**: 10 (HCS-10, HCS-11, HCS-14, HCS-19, HCS-20, HCS-26 + HIP-991)
+- **Version**: 0.22.0
+- **Demo Agents**: 8 pre-seeded with full identities and reputation
+
 ## API Reference
 
 ### Health & Status
@@ -244,7 +272,7 @@ src/
   seed/
     index.ts                  # Seed orchestration
     demo-agents.ts            # 8 demo agent definitions
-tests/                        # 69 test suites, 1335+ tests
+tests/                        # 1455+ tests
 ```
 
 ## Docker
@@ -262,8 +290,8 @@ docker run -p 3000:3000 --env-file .env hedera-agent-marketplace
 
 - **Runtime**: Node.js 22, TypeScript 5.7
 - **Server**: Express 5
-- **Hedera**: @hashgraph/sdk 2.80+, @hashgraphonline/standards-sdk 0.1.158
-- **Testing**: Jest + ts-jest (1335+ tests, 69 suites)
+- **Hedera**: @hashgraph/sdk 2.80+, @hashgraphonline/standards-sdk 0.1.159
+- **Testing**: Jest + ts-jest (1455+ tests)
 - **Container**: Docker + docker-compose
 
 ## Live Deployment

@@ -37,8 +37,8 @@ import { AgentRegistration, ConsentRequest, SearchQuery, SkillManifest } from '.
 import { FullDemoFlow } from '../demo/full-flow';
 
 // Test count managed as a constant — updated each sprint
-const TEST_COUNT = 1450;
-const VERSION = '0.21.0';
+const TEST_COUNT = 1455;
+const VERSION = '0.22.0';
 const STANDARDS = ['HCS-10', 'HCS-11', 'HCS-14', 'HCS-19', 'HCS-20', 'HCS-26'];
 
 export function createRouter(
@@ -949,7 +949,7 @@ export function createRouter(
       version: VERSION,
       description: 'Decentralized agent marketplace on Hedera',
       url: 'https://hedera.opspawn.com',
-      capabilities: ['agent-registration', 'agent-discovery', 'privacy-consent', 'skill-publishing', 'reputation-points', 'hcs-10-connections', 'chat-relay', 'agent-connections'],
+      capabilities: ['agent-registration', 'agent-discovery', 'privacy-consent', 'skill-publishing', 'reputation-points', 'hcs-10-connections', 'chat-relay', 'agent-connections', 'full-flow-demo'],
       protocols: ['hcs-10', 'hcs-11', 'hcs-14', 'hcs-19', 'hcs-20', 'hcs-26'],
     });
   });
