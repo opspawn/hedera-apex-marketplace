@@ -32,6 +32,10 @@ async function request(app: Express, method: string, path: string, body?: unknow
 describe('End-to-End Demo Flow: seed → register → search → hire → pay → verify', () => {
   let app: Express;
 
+  beforeAll(() => {
+    jest.setTimeout(30000);
+  });
+
   beforeEach(() => {
     ({ app } = createApp());
   });
@@ -40,7 +44,7 @@ describe('End-to-End Demo Flow: seed → register → search → hire → pay �
     // Phase 1: Verify initial state
     const healthBefore = await request(app, 'GET', '/health');
     expect(healthBefore.status).toBe(200);
-    expect(healthBefore.body.version).toBe('0.26.0');
+    expect(healthBefore.body.version).toBe('0.27.0');
     expect(healthBefore.body.agents).toBe(0);
 
     // Phase 2: Run demo to seed agents
@@ -49,12 +53,12 @@ describe('End-to-End Demo Flow: seed → register → search → hire → pay �
     expect(demoRun.body.poll_url).toBe('/api/demo/status');
 
     // Wait for demo to complete
-    await new Promise(r => setTimeout(r, 500));
+    await new Promise(r => setTimeout(r, 3000));
 
     // Phase 3: Verify demo completed
     const demoStatus = await request(app, 'GET', '/api/demo/status');
     expect(demoStatus.body.status).toBe('completed');
-    expect(demoStatus.body.version).toBe('0.26.0');
+    expect(demoStatus.body.version).toBe('0.27.0');
 
     // Phase 4: Verify steps endpoint
     const demoSteps = await request(app, 'GET', '/api/demo/steps');
@@ -108,7 +112,7 @@ describe('End-to-End Demo Flow: seed → register → search → hire → pay �
     // Phase 11: Verify A2A discovery card
     const agentCard = await request(app, 'GET', '/.well-known/agent-card.json');
     expect(agentCard.status).toBe(200);
-    expect(agentCard.body.version).toBe('0.26.0');
+    expect(agentCard.body.version).toBe('0.27.0');
     expect(agentCard.body.protocols).toContain('hcs-10');
     expect(agentCard.body.protocols.length).toBe(6);
   });
@@ -116,7 +120,7 @@ describe('End-to-End Demo Flow: seed → register → search → hire → pay �
   it('should register a new agent after seeding, then search for it', async () => {
     // Seed first
     await request(app, 'POST', '/api/demo/run');
-    await new Promise(r => setTimeout(r, 500));
+    await new Promise(r => setTimeout(r, 3000));
 
     // Register a new agent
     const regRes = await request(app, 'POST', '/api/marketplace/register', {
@@ -169,7 +173,7 @@ describe('End-to-End Demo Flow: seed → register → search → hire → pay �
   it('should handle multiple hires and track points correctly', async () => {
     // Seed marketplace
     await request(app, 'POST', '/api/demo/run');
-    await new Promise(r => setTimeout(r, 500));
+    await new Promise(r => setTimeout(r, 3000));
 
     // Get an agent (from marketplace, which has the seeded agents)
     const agents = await request(app, 'GET', '/api/marketplace/discover');
@@ -198,7 +202,7 @@ describe('End-to-End Demo Flow: seed → register → search → hire → pay �
   it('should maintain data consistency between demo steps and API state', async () => {
     // Run demo
     await request(app, 'POST', '/api/demo/run');
-    await new Promise(r => setTimeout(r, 500));
+    await new Promise(r => setTimeout(r, 3000));
 
     // Get demo steps
     const steps = await request(app, 'GET', '/api/demo/steps');

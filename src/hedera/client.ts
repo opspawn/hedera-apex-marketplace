@@ -58,6 +58,12 @@ export class HederaTestnetClient {
   /**
    * Initialize live Hedera SDK client.
    * Uses Client.forTestnet() with operator credentials.
+   *
+   * Key format handling:
+   * - Tries ECDSA first (most common for testnet accounts created via portal)
+   * - Then ED25519
+   * - Then raw hex with DER prefix for ECDSA secp256k1
+   * - Then generic fromString as final fallback
    */
   private initLiveClient(): void {
     let sdkClient: any = null;
@@ -70,15 +76,24 @@ export class HederaTestnetClient {
       } else {
         sdkClient = Client.forMainnet();
       }
-      // Try ED25519 format first (raw hex), then ECDSA, then raw string
+
+      // Try multiple key formats — ECDSA first since that's the testnet default
       let privateKey;
+      const keyStr = this.config.privateKey;
+      const DER_PREFIX_ECDSA = '3030020100300706052b8104000a04220420';
+
       try {
-        privateKey = PrivateKey.fromStringED25519(this.config.privateKey);
+        privateKey = PrivateKey.fromStringECDSA(keyStr);
       } catch {
         try {
-          privateKey = PrivateKey.fromStringECDSA(this.config.privateKey);
+          privateKey = PrivateKey.fromStringED25519(keyStr);
         } catch {
-          privateKey = PrivateKey.fromString(this.config.privateKey);
+          try {
+            // Raw hex without DER prefix — prepend ECDSA secp256k1 DER prefix
+            privateKey = PrivateKey.fromStringECDSA(DER_PREFIX_ECDSA + keyStr);
+          } catch {
+            privateKey = PrivateKey.fromString(keyStr);
+          }
         }
       }
       sdkClient.setOperator(this.config.accountId, privateKey);

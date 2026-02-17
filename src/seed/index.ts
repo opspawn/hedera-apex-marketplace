@@ -41,64 +41,69 @@ export async function seedDemoAgents(
   const results: SeedResult = { seeded: 0, agents: [] };
 
   for (const seed of DEMO_AGENTS) {
-    const ma = await marketplace.registerAgentWithIdentity({
-      name: seed.name,
-      description: seed.description,
-      endpoint: seed.endpoint,
-      skills: seed.skills,
-      protocols: seed.protocols,
-      payment_address: seed.payment_address,
-    });
+    try {
+      const ma = await marketplace.registerAgentWithIdentity({
+        name: seed.name,
+        description: seed.description,
+        endpoint: seed.endpoint,
+        skills: seed.skills,
+        protocols: seed.protocols,
+        payment_address: seed.payment_address,
+      });
 
-    // Set reputation score on the registered agent
-    ma.agent.reputation_score = seed.reputation;
+      // Set reputation score on the registered agent
+      ma.agent.reputation_score = seed.reputation;
 
-    // Grant HCS-19 privacy consent if configured
-    if (seed.hasPrivacyConsent && seed.consentPurposes) {
-      await privacy.grantConsent({
+      // Grant HCS-19 privacy consent if configured
+      if (seed.hasPrivacyConsent && seed.consentPurposes) {
+        await privacy.grantConsent({
+          agent_id: ma.agent.agent_id,
+          purposes: seed.consentPurposes,
+          retention: '6m',
+        });
+      }
+
+      // Award initial HCS-20 reputation points based on seed reputation
+      const initialPoints = Math.floor(seed.reputation * 10);
+      await points.awardPoints({
+        agentId: ma.agent.agent_id,
+        points: initialPoints,
+        reason: 'initial_registration',
+        fromAgent: 'marketplace-system',
+      });
+
+      // Award bonus points for having privacy consent
+      if (seed.hasPrivacyConsent) {
+        await points.awardPoints({
+          agentId: ma.agent.agent_id,
+          points: 50,
+          reason: 'privacy_consent_granted',
+          fromAgent: 'marketplace-system',
+        });
+      }
+
+      // Award points for each published skill
+      for (const skill of seed.skills) {
+        await points.awardPoints({
+          agentId: ma.agent.agent_id,
+          points: 25,
+          reason: `skill_published:${skill.name}`,
+          fromAgent: 'marketplace-system',
+        });
+      }
+
+      results.agents.push({
+        name: seed.name,
         agent_id: ma.agent.agent_id,
-        purposes: seed.consentPurposes,
-        retention: '6m',
+        reputation: seed.reputation,
+        hasConsent: seed.hasPrivacyConsent,
+        points: points.getAgentPoints(ma.agent.agent_id),
       });
+      results.seeded++;
+    } catch (err) {
+      // Log but continue seeding remaining agents — don't let one failure block all
+      console.warn(`Failed to seed agent ${seed.name}: ${err instanceof Error ? err.message : 'Unknown error'}`);
     }
-
-    // Award initial HCS-20 reputation points based on seed reputation
-    const initialPoints = Math.floor(seed.reputation * 10);
-    await points.awardPoints({
-      agentId: ma.agent.agent_id,
-      points: initialPoints,
-      reason: 'initial_registration',
-      fromAgent: 'marketplace-system',
-    });
-
-    // Award bonus points for having privacy consent
-    if (seed.hasPrivacyConsent) {
-      await points.awardPoints({
-        agentId: ma.agent.agent_id,
-        points: 50,
-        reason: 'privacy_consent_granted',
-        fromAgent: 'marketplace-system',
-      });
-    }
-
-    // Award points for each published skill
-    for (const skill of seed.skills) {
-      await points.awardPoints({
-        agentId: ma.agent.agent_id,
-        points: 25,
-        reason: `skill_published:${skill.name}`,
-        fromAgent: 'marketplace-system',
-      });
-    }
-
-    results.agents.push({
-      name: seed.name,
-      agent_id: ma.agent.agent_id,
-      reputation: seed.reputation,
-      hasConsent: seed.hasPrivacyConsent,
-      points: points.getAgentPoints(ma.agent.agent_id),
-    });
-    results.seeded++;
   }
 
   return results;

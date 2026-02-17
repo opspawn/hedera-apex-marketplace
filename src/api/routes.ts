@@ -38,8 +38,8 @@ import { FullDemoFlow } from '../demo/full-flow';
 import { TestnetIntegration } from '../hedera/testnet-integration';
 
 // Test count managed as a constant — updated each sprint
-const TEST_COUNT = 1604;
-const VERSION = '0.26.0';
+const TEST_COUNT = 1622;
+const VERSION = '0.27.0';
 const STANDARDS = ['HCS-10', 'HCS-11', 'HCS-14', 'HCS-19', 'HCS-20', 'HCS-26'];
 
 export function createRouter(
@@ -75,7 +75,7 @@ export function createRouter(
       timestamp: new Date().toISOString(),
       uptime: `${hours}h ${minutes}m ${seconds}s`,
       uptime_seconds: uptimeSeconds,
-      agents: registry.getCount(),
+      agents: marketplace ? marketplace.getAgentCount() || registry.getCount() : registry.getCount(),
       standards: STANDARDS,
       test_count: TEST_COUNT,
       endpoints: {
@@ -117,6 +117,38 @@ export function createRouter(
         onChainMessages: session.onChainMessages,
       },
     });
+  });
+
+  // ==========================================
+  // Testnet Balance — Shows real HBAR balance for judges
+  // ==========================================
+  router.get('/api/testnet/balance', async (_req: Request, res: Response) => {
+    if (!testnetIntegration) {
+      res.json({
+        mode: 'mock',
+        account_id: 'mock-account',
+        balance: { hbar: 10000, tokens: {} },
+        hashscan_url: null,
+      });
+      return;
+    }
+    try {
+      const status = testnetIntegration.getStatus();
+      const balance = await testnetIntegration.getAccountBalance();
+      const network = status.network;
+      const accountId = status.accountId;
+      res.json({
+        mode: status.mode,
+        account_id: accountId,
+        network,
+        balance,
+        hashscan_url: `https://hashscan.io/${network}/account/${accountId}`,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      res.status(500).json({ error: 'balance_query_failed', message });
+    }
   });
 
   // ==========================================
@@ -633,6 +665,8 @@ export function createRouter(
     }
     try {
       const startTime = Date.now();
+      const isLive = testnetIntegration ? testnetIntegration.isLive() : false;
+      const network = testnetIntegration ? testnetIntegration.getStatus().network : 'testnet';
       const steps: Array<{
         step: number;
         phase: string;
@@ -692,9 +726,27 @@ export function createRouter(
         });
         demoAgentId = result.agent.agent_id;
         demoAgentName = result.agent.name;
+
+        // Include hashscan links for hedera_transactions when in live mode
+        const txLinks = result.agent.hedera_transactions.map(tx => ({
+          topicId: tx.topicId,
+          sequenceNumber: tx.sequenceNumber,
+          hashscanUrl: tx.hashscanUrl,
+          onChain: tx.onChain,
+        }));
+
         return {
-          detail: `Registered "${demoAgentName}" with HCS-19 identity`,
-          data: { agent_id: demoAgentId, agent_name: demoAgentName, standards: ['HCS-10', 'HCS-11', 'HCS-14', 'HCS-19'] },
+          detail: `Registered "${demoAgentName}" with HCS-19 identity${isLive ? ' (LIVE on Hedera testnet)' : ''}`,
+          data: {
+            agent_id: demoAgentId,
+            agent_name: demoAgentName,
+            standards: ['HCS-10', 'HCS-11', 'HCS-14', 'HCS-19'],
+            hedera_verified: result.agent.hedera_verified,
+            hedera_transactions: txLinks,
+            inbound_topic: result.agent.inbound_topic,
+            outbound_topic: result.agent.outbound_topic,
+            profile_topic: result.agent.profile_topic,
+          },
         };
       });
 
@@ -705,7 +757,14 @@ export function createRouter(
         discoveredCount = result.total;
         return {
           detail: `Discovered ${discoveredCount} agents in marketplace`,
-          data: { total: discoveredCount, agents: result.agents.slice(0, 5).map(a => ({ name: a.agent.name, reputation: a.agent.reputation_score })) },
+          data: {
+            total: discoveredCount,
+            agents: result.agents.slice(0, 5).map(a => ({
+              name: a.agent.name,
+              reputation: a.agent.reputation_score,
+              hedera_verified: a.agent.hedera_verified,
+            })),
+          },
         };
       });
 
@@ -758,6 +817,9 @@ export function createRouter(
         };
       });
 
+      // Collect testnet session stats for the summary
+      const testnetSession = testnetIntegration ? testnetIntegration.getSessionSummary() : null;
+
       const completedSteps = steps.filter(s => s.status === 'completed').length;
       const failedSteps = steps.filter(s => s.status === 'failed').length;
 
@@ -765,6 +827,14 @@ export function createRouter(
         status: failedSteps === 0 ? 'completed' : completedSteps > 0 ? 'partial' : 'failed',
         steps,
         total_duration_ms: Date.now() - startTime,
+        hedera: {
+          mode: isLive ? 'live' : 'mock',
+          network,
+          topics_created: testnetSession?.topicsCreated || 0,
+          messages_submitted: testnetSession?.messagesSubmitted || 0,
+          on_chain_topics: testnetSession?.onChainTopics || 0,
+          on_chain_messages: testnetSession?.onChainMessages || 0,
+        },
         summary: {
           total_steps: steps.length,
           completed_steps: completedSteps,

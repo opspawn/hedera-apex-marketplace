@@ -38,7 +38,7 @@ describe('Demo API Validation', () => {
     it('should return version field', async () => {
       const res = await request(app, 'GET', '/api/demo/status');
       expect(res.status).toBe(200);
-      expect(res.body.version).toBe('0.26.0');
+      expect(res.body.version).toBe('0.27.0');
     });
 
     it('should return endpoint field', async () => {
@@ -98,19 +98,19 @@ describe('Demo API Validation', () => {
     });
 
     it('should return steps after demo run', async () => {
-      // Start demo and wait for completion
+      // Start demo and wait for completion (testnet fallback adds latency)
       await request(app, 'POST', '/api/demo/run');
-      await new Promise(r => setTimeout(r, 500));
+      await new Promise(r => setTimeout(r, 3000));
 
       const res = await request(app, 'GET', '/api/demo/steps');
       expect(res.status).toBe(200);
       expect(res.body.total_steps).toBeGreaterThan(0);
       expect(res.body.steps.length).toBe(res.body.total_steps);
-    });
+    }, 15000);
 
     it('should return summary after completion', async () => {
       await request(app, 'POST', '/api/demo/run');
-      await new Promise(r => setTimeout(r, 500));
+      await new Promise(r => setTimeout(r, 3000));
 
       const res = await request(app, 'GET', '/api/demo/steps');
       if (res.body.status === 'completed') {
@@ -124,12 +124,12 @@ describe('Demo API Validation', () => {
     it('should return version 0.11.0', async () => {
       const res = await request(app, 'GET', '/health');
       expect(res.status).toBe(200);
-      expect(res.body.version).toBe('0.26.0');
+      expect(res.body.version).toBe('0.27.0');
     });
 
     it('should report updated test count', async () => {
       const res = await request(app, 'GET', '/health');
-      expect(res.body.test_count).toBe(1604);
+      expect(res.body.test_count).toBe(1622);
     });
 
     it('should list 6 HCS standards', async () => {
@@ -149,7 +149,7 @@ describe('Demo API Validation', () => {
   describe('Seed data validation', () => {
     it('should load seed data correctly via demo run', async () => {
       const res = await request(app, 'POST', '/api/demo/run');
-      await new Promise(r => setTimeout(r, 500));
+      await new Promise(r => setTimeout(r, 3000));
 
       const status = await request(app, 'GET', '/api/demo/status');
       if (status.body.status === 'completed') {
@@ -158,16 +158,16 @@ describe('Demo API Validation', () => {
         expect(seedStep.data.seeded).toBe(8);
         expect(seedStep.data.total).toBe(8);
       }
-    });
+    }, 15000);
 
     it('should have agents available after seeding', async () => {
       await request(app, 'POST', '/api/demo/run');
-      await new Promise(r => setTimeout(r, 500));
+      await new Promise(r => setTimeout(r, 3000));
 
       // Demo seeds into MarketplaceService, use discover endpoint
       const agents = await request(app, 'GET', '/api/marketplace/discover');
       expect(agents.status).toBe(200);
       expect(agents.body.total).toBe(8);
-    });
+    }, 15000);
   });
 });
