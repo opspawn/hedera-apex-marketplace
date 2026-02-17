@@ -30,6 +30,14 @@ export interface AgentRegistration {
   payment_address: string;
 }
 
+export interface HederaTransactionRef {
+  topicId: string;
+  sequenceNumber: number;
+  timestamp: string;
+  hashscanUrl: string;
+  onChain: boolean;
+}
+
 export interface RegisteredAgent extends AgentRegistration {
   agent_id: string;
   inbound_topic: string;
@@ -38,6 +46,8 @@ export interface RegisteredAgent extends AgentRegistration {
   reputation_score: number;
   status: 'online' | 'offline' | 'suspended';
   registered_at: string;
+  hedera_verified: boolean;
+  hedera_transactions: HederaTransactionRef[];
 }
 
 export interface AgentProfile {

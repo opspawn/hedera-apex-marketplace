@@ -23,6 +23,8 @@ describe('HCS11ProfileManager', () => {
     reputation_score: 85,
     status: 'online',
     registered_at: '2026-02-17T10:00:00Z',
+    hedera_verified: false,
+    hedera_transactions: [],
   };
 
   beforeEach(() => {

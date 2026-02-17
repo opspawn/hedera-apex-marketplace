@@ -160,9 +160,16 @@ export function createDashboardRouter(): Router {
       });
       const data: any = await resp.json();
       agentId = data.agent?.agent_id || null;
+      const txs = data.agent?.hedera_transactions || [];
+      const verified = data.agent?.hedera_verified || false;
       return {
-        detail: 'Registered demo agent with 2 skills (code-analysis, data-processing)',
-        data: { agent_id: agentId, name: data.agent?.name },
+        detail: `Registered demo agent with 2 skills${verified ? ' — verified on Hedera testnet' : ''}`,
+        data: {
+          agent_id: agentId,
+          name: data.agent?.name,
+          hedera_verified: verified,
+          hedera_transactions: txs.map((tx: any) => ({ hashscanUrl: tx.hashscanUrl, sequenceNumber: tx.sequenceNumber })),
+        },
       };
     });
 
@@ -221,6 +228,42 @@ export function createDashboardRouter(): Router {
       return {
         detail: 'Queried HCS-26 skill registry — ' + count + ' skills published across marketplace',
         data: { skillCount: count, protocol: 'HCS-26' },
+      };
+    });
+
+    // Step 6: Show Hedera transaction details
+    await runStep(6, 'View Hedera Transaction', async () => {
+      if (agentId) {
+        const resp = await fetch(baseUrl + '/api/agents/' + agentId);
+        const data: any = await resp.json();
+        const txs = data.hedera_transactions || [];
+        const verified = data.hedera_verified || false;
+        if (txs.length > 0) {
+          return {
+            detail: `Agent verified on Hedera testnet — ${txs.length} on-chain transaction(s). View on HashScan.`,
+            data: { hedera_verified: verified, transactions: txs },
+          };
+        }
+        return {
+          detail: 'Agent registered (mock mode — no live testnet credentials)',
+          data: { hedera_verified: false },
+        };
+      }
+      return { detail: 'Hedera transaction verification available for registered agents', data: {} };
+    });
+
+    // Step 7: Show live stats
+    await runStep(7, 'Live Stats Summary', async () => {
+      const resp = await fetch(baseUrl + '/api/live-stats');
+      const data: any = await resp.json();
+      return {
+        detail: `Marketplace live: ${data.total_agents} agents, ${data.total_hedera_messages} Hedera messages, ${data.active_connections} connections`,
+        data: {
+          total_agents: data.total_agents,
+          hedera_messages: data.total_hedera_messages,
+          active_connections: data.active_connections,
+          hedera_mode: data.hedera_mode,
+        },
       };
     });
 
@@ -522,7 +565,7 @@ function getDashboardHTML(): string {
       <div class="logo" aria-hidden="true">H</div>
       <div>
         <h1><span>Hedera</span> Agent Marketplace</h1>
-        <div style="font-size:0.7rem; color:#6a7a9a; margin-top:0.15rem;">v0.25.0 &middot; <span id="testnet-mode" style="color:#00c853;">Testnet</span> &middot; Account <span style="color:#00d4ff;">0.0.7854018</span></div>
+        <div style="font-size:0.7rem; color:#6a7a9a; margin-top:0.15rem;">v0.26.0 &middot; <span id="testnet-mode" style="color:#00c853;">Testnet</span> &middot; Account <span style="color:#00d4ff;">0.0.7854018</span></div>
       </div>
     </div>
     <div class="header-right" aria-label="Supported HCS Standards">
@@ -579,14 +622,14 @@ function getDashboardHTML(): string {
         <div class="label">Registered Agents</div>
       </div>
       <div class="stat-card">
-        <span class="stat-icon">&#x1F50C;</span>
-        <div class="value" id="stat-skills" aria-label="Connections count">0</div>
-        <div class="label">Connections</div>
+        <span class="stat-icon">&#x1F4DC;</span>
+        <div class="value" id="stat-skills" aria-label="Hedera Messages count">0</div>
+        <div class="label">Hedera Messages</div>
       </div>
       <div class="stat-card">
-        <span class="stat-icon">&#x1F4AC;</span>
-        <div class="value" id="stat-hires" aria-label="Messages count">0</div>
-        <div class="label">Messages</div>
+        <span class="stat-icon">&#x1F50C;</span>
+        <div class="value" id="stat-hires" aria-label="Active Connections count">0</div>
+        <div class="label">Active Connections</div>
       </div>
       <div class="stat-card">
         <span class="stat-icon">&#x1F9E9;</span>
@@ -958,6 +1001,7 @@ function getDashboardHTML(): string {
             <div class="agent-desc">\${esc(a.description)}</div>
             <div class="agent-meta">
               <span class="badge badge-\${a.status || 'offline'}">\${a.status || 'offline'}</span>
+              \${a.hedera_verified ? '<span class="badge" style="background:rgba(119,86,236,0.15);color:#7b5fec;border:1px solid rgba(119,86,236,0.3);">&#x2713; Verified on Hedera</span>' : ''}
               <span class="agent-reputation">\${'\u2B50'} \${a.reputation_score || 0}</span>
               \${ma.points ? '<span style="font-size:0.8rem; color:#a855f7;">' + ma.points.total_points + ' pts</span>' : ''}
             </div>
@@ -1083,6 +1127,16 @@ function getDashboardHTML(): string {
               <div class="modal-field"><span class="label">\${esc(k)}</span><span class="value">\${v}</span></div>\`).join('')}
             <div class="modal-field"><span class="label">History Entries</span><span class="value">\${(ma.points.entries || []).length}</span></div>
           </div>\` : ''}
+          <div class="modal-section">
+            <h3>Hedera Testnet</h3>
+            <div class="modal-field"><span class="label">Verified on Hedera</span><span class="value" style="color:\${a.hedera_verified ? '#00c853' : '#ffaa00'};">\${a.hedera_verified ? '&#x2713; Yes' : 'No (mock mode)'}</span></div>
+            \${(a.hedera_transactions || []).map(function(tx, i) { return \`
+              <div class="modal-field">
+                <span class="label">Transaction #\${i + 1}</span>
+                <span class="value"><a href="\${esc(tx.hashscanUrl)}" target="_blank" rel="noopener" style="color:#00d4ff; text-decoration:underline;">View on HashScan</a> (seq #\${tx.sequenceNumber})</span>
+              </div>\`; }).join('')}
+            \${!(a.hedera_transactions || []).length ? '<div class="modal-field"><span class="label">Transactions</span><span class="value" style="color:#6a7a9a;">No on-chain transactions yet</span></div>' : ''}
+          </div>
           <div class="modal-section">
             <h3>Network</h3>
             <div class="modal-field"><span class="label">Endpoint</span><span class="value">\${esc(a.endpoint)}</span></div>
@@ -1306,16 +1360,16 @@ function getDashboardHTML(): string {
       const totalSkills = agents.reduce(function(sum, ma) { return sum + ((ma.agent?.skills || []).length) + ((ma.publishedSkills || []).length); }, 0);
       animateStat(document.getElementById('stat-agents'), totalAgents);
       animateStat(document.getElementById('stat-active'), totalSkills);
-      // Fetch live connection + message counts
-      fetch('/api/connections')
+      // Fetch live stats from the new endpoint
+      fetch('/api/live-stats')
         .then(function(r) { return r.json(); })
-        .then(function(c) {
-          animateStat(document.getElementById('stat-skills'), (c.active || 0) + (c.pending || 0) + (c.closed || 0));
-          animateStat(document.getElementById('stat-hires'), c.total_messages || hireCount);
+        .then(function(s) {
+          animateStat(document.getElementById('stat-skills'), s.total_hedera_messages || 0);
+          animateStat(document.getElementById('stat-hires'), s.active_connections || 0);
         })
         .catch(function() {
           animateStat(document.getElementById('stat-skills'), 0);
-          animateStat(document.getElementById('stat-hires'), hireCount);
+          animateStat(document.getElementById('stat-hires'), 0);
         });
     }
 

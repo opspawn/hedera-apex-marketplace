@@ -105,7 +105,7 @@ describe('Chat Server Routes', () => {
         message: '',
       });
       expect(res.status).toBe(400);
-      expect(res.body.error).toBe('Message is required');
+      expect(res.body.error).toBe('validation_error');
     });
 
     test('should reject missing message', async () => {
@@ -113,7 +113,7 @@ describe('Chat Server Routes', () => {
         sessionId: 'test',
       });
       expect(res.status).toBe(400);
-      expect(res.body.error).toBe('Message is required');
+      expect(res.body.error).toBe('validation_error');
     });
 
     test('should return API key not configured message when no key set', async () => {

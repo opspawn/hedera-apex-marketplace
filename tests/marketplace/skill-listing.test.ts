@@ -19,6 +19,8 @@ describe('SkillListing', () => {
       reputation_score: 90,
       status: 'online',
       registered_at: '2026-01-01T00:00:00Z',
+      hedera_verified: false,
+      hedera_transactions: [],
     },
     {
       agent_id: '0.0.2',
@@ -37,6 +39,8 @@ describe('SkillListing', () => {
       reputation_score: 75,
       status: 'online',
       registered_at: '2026-01-02T00:00:00Z',
+      hedera_verified: false,
+      hedera_transactions: [],
     },
   ];
 

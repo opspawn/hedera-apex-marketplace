@@ -64,13 +64,24 @@ export class HederaTestnetClient {
     try {
       // Attempt to load @hashgraph/sdk dynamically
       // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const { Client } = require('@hashgraph/sdk');
+      const { Client, PrivateKey } = require('@hashgraph/sdk');
       if (this.config.network === 'testnet') {
         sdkClient = Client.forTestnet();
       } else {
         sdkClient = Client.forMainnet();
       }
-      sdkClient.setOperator(this.config.accountId, this.config.privateKey);
+      // Try ED25519 format first (raw hex), then ECDSA, then raw string
+      let privateKey;
+      try {
+        privateKey = PrivateKey.fromStringED25519(this.config.privateKey);
+      } catch {
+        try {
+          privateKey = PrivateKey.fromStringECDSA(this.config.privateKey);
+        } catch {
+          privateKey = PrivateKey.fromString(this.config.privateKey);
+        }
+      }
+      sdkClient.setOperator(this.config.accountId, privateKey);
       this.client = sdkClient;
     } catch {
       // SDK not available or credentials invalid — fall back to mock

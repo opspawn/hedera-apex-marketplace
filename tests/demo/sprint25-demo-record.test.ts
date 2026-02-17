@@ -36,9 +36,9 @@ describe('Sprint 25: Demo Recording Route', () => {
     expect(Array.isArray(res.body.steps)).toBe(true);
   });
 
-  test('demo runs 5 steps', async () => {
+  test('demo runs 7 steps', async () => {
     const res = await req(app, '/demo/record?pause=50');
-    expect(res.body.steps.length).toBe(5);
+    expect(res.body.steps.length).toBe(7);
   });
 
   test('includes all expected step names', async () => {
@@ -49,6 +49,8 @@ describe('Sprint 25: Demo Recording Route', () => {
     expect(names).toContain('Connect Agents (HCS-10)');
     expect(names).toContain('Chat Relay Message');
     expect(names).toContain('Show Skills (HCS-26)');
+    expect(names).toContain('View Hedera Transaction');
+    expect(names).toContain('Live Stats Summary');
   });
 
   test('tracks total duration', async () => {

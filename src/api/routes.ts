@@ -38,8 +38,8 @@ import { FullDemoFlow } from '../demo/full-flow';
 import { TestnetIntegration } from '../hedera/testnet-integration';
 
 // Test count managed as a constant — updated each sprint
-const TEST_COUNT = 1600;
-const VERSION = '0.25.0';
+const TEST_COUNT = 1604;
+const VERSION = '0.26.0';
 const STANDARDS = ['HCS-10', 'HCS-11', 'HCS-14', 'HCS-19', 'HCS-20', 'HCS-26'];
 
 export function createRouter(
@@ -164,6 +164,7 @@ export function createRouter(
             verification_status: ma.verificationStatus,
             published_skills: ma.publishedSkills.length,
             hcs_standards: STANDARDS,
+            hedera_verified: ma.agent.hedera_verified || false,
           })),
           total: result.total,
           registry_topic: '0.0.demo-registry',
@@ -197,6 +198,8 @@ export function createRouter(
             verification_status: profile.verificationStatus,
             published_skills: profile.publishedSkills.length,
             hcs_standards: STANDARDS,
+            hedera_verified: profile.agent.hedera_verified || false,
+            hedera_transactions: profile.agent.hedera_transactions || [],
           });
           return;
         }
@@ -206,7 +209,11 @@ export function createRouter(
         res.status(404).json({ error: 'not_found', message: `Agent ${id} not found` });
         return;
       }
-      res.json(agent);
+      res.json({
+        ...agent,
+        hedera_verified: agent.hedera_verified || false,
+        hedera_transactions: agent.hedera_transactions || [],
+      });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Unknown error';
       res.status(500).json({ error: 'fetch_failed', message });
@@ -1146,6 +1153,9 @@ export function createRouter(
     const minutes = Math.floor((uptimeSeconds % 3600) / 60);
     const seconds = uptimeSeconds % 60;
 
+    // Gather Hedera testnet stats
+    const testnetSession = testnetIntegration ? testnetIntegration.getSessionSummary() : null;
+
     res.json({
       version: VERSION,
       testCount: TEST_COUNT,
@@ -1153,6 +1163,38 @@ export function createRouter(
       uptime: `${hours}h ${minutes}m ${seconds}s`,
       uptime_seconds: uptimeSeconds,
       agentsRegistered: marketplace ? marketplace.getAgentCount() : registry.getCount(),
+      hedera: {
+        mode: testnetSession?.mode || 'mock',
+        network: testnetSession?.network || 'testnet',
+        topicsCreated: testnetSession?.topicsCreated || 0,
+        messagesSubmitted: testnetSession?.messagesSubmitted || 0,
+        onChainTopics: testnetSession?.onChainTopics || 0,
+        onChainMessages: testnetSession?.onChainMessages || 0,
+      },
+    });
+  });
+
+  // ==========================================
+  // Live Stats endpoint (for homepage dashboard)
+  // ==========================================
+  router.get('/api/live-stats', (_req: Request, res: Response) => {
+    const testnetSession = testnetIntegration ? testnetIntegration.getSessionSummary() : null;
+    const testnetStatus = testnetIntegration ? testnetIntegration.getStatus() : null;
+    const agentCount = marketplace ? marketplace.getAgentCount() : registry.getCount();
+    const connectionStatus = connectionHandler ? connectionHandler.getHandlerStatus() : null;
+
+    res.json({
+      total_agents: agentCount,
+      total_hedera_messages: testnetSession?.messagesSubmitted || 0,
+      on_chain_messages: testnetSession?.onChainMessages || 0,
+      topics_created: testnetSession?.topicsCreated || 0,
+      active_connections: connectionStatus?.active_connections || 0,
+      hedera_mode: testnetStatus?.mode || 'mock',
+      hedera_network: testnetStatus?.network || 'testnet',
+      hedera_connected: testnetStatus?.connected || false,
+      total_points_awarded: points ? points.getTotalPointsAwarded() : 0,
+      version: VERSION,
+      timestamp: new Date().toISOString(),
     });
   });
 

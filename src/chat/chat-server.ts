@@ -156,7 +156,12 @@ export function createChatRouter(options?: ChatRouterOptions): Router {
     const { sessionId, message } = req.body as { sessionId?: string; message?: string };
 
     if (!message || typeof message !== 'string' || !message.trim()) {
-      res.status(400).json({ error: 'Message is required' });
+      res.status(400).json({ error: 'validation_error', message: 'Message is required' });
+      return;
+    }
+
+    if (message.length > 10000) {
+      res.status(400).json({ error: 'validation_error', message: 'Message too long (max 10,000 characters)' });
       return;
     }
 
@@ -643,7 +648,7 @@ function getChatHTML(): string {
       div.id = id;
       div.className = 'typing-indicator';
       div.innerHTML = '<div class="message-avatar" style="background:linear-gradient(135deg,#00d4ff,#0088cc);color:#fff;">H</div>' +
-        '<div class="typing-dots"><span></span><span></span><span></span></div>';
+        '<div style="display:flex;flex-direction:column;gap:4px;"><div class="typing-dots"><span></span><span></span><span></span></div><div style="font-size:0.7rem;color:#4a5a7a;padding-left:0.5rem;">Thinking...</div></div>';
       container.appendChild(div);
       scrollToBottom();
       return id;

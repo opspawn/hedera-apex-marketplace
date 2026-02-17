@@ -9,8 +9,12 @@
  * to local mock implementation.
  */
 
-import { AgentRegistration, RegisteredAgent } from '../types';
+import { AgentRegistration, RegisteredAgent, HederaTransactionRef } from '../types';
 import { TestnetIntegration } from '../hedera/testnet-integration';
+
+function buildHashscanUrl(topicId: string, sequenceNumber: number, network: string): string {
+  return `https://hashscan.io/${network}/topic/${topicId}?p=1&ps=1&k=${sequenceNumber}`;
+}
 
 export interface HCS10Config {
   accountId: string;
@@ -56,30 +60,52 @@ export class HCS10Client {
     let inboundTopic: string;
     let outboundTopic: string;
     let profileTopic: string;
+    let hederaVerified = false;
+    const hederaTransactions: HederaTransactionRef[] = [];
+    const network = this.config.network;
 
     if (this.testnet) {
       // Real testnet: create actual HCS topics
-      const inbound = await this.testnet.createTopic(`hcs10:inbound:${registration.name}`);
-      const outbound = await this.testnet.createTopic(`hcs10:outbound:${registration.name}`);
-      const profile = await this.testnet.createTopic(`hcs10:profile:${registration.name}`);
+      try {
+        const inbound = await this.testnet.createTopic(`hcs10:inbound:${registration.name}`);
+        const outbound = await this.testnet.createTopic(`hcs10:outbound:${registration.name}`);
+        const profile = await this.testnet.createTopic(`hcs10:profile:${registration.name}`);
 
-      inboundTopic = inbound.topicId;
-      outboundTopic = outbound.topicId;
-      profileTopic = profile.topicId;
+        inboundTopic = inbound.topicId;
+        outboundTopic = outbound.topicId;
+        profileTopic = profile.topicId;
 
-      // Submit registration message to registry topic
-      await this.testnet.submitMessage(this.config.registryTopicId, {
-        type: 'hcs-10-registration',
-        name: registration.name,
-        description: registration.description,
-        inbound_topic: inboundTopic,
-        outbound_topic: outboundTopic,
-        profile_topic: profileTopic,
-        endpoint: registration.endpoint,
-        protocols: registration.protocols,
-        skills: registration.skills.map(s => s.name),
-        timestamp: new Date().toISOString(),
-      });
+        // Submit registration message to registry topic
+        const regResult = await this.testnet.submitMessage(this.config.registryTopicId, {
+          type: 'hcs-10-registration',
+          name: registration.name,
+          description: registration.description,
+          inbound_topic: inboundTopic,
+          outbound_topic: outboundTopic,
+          profile_topic: profileTopic,
+          endpoint: registration.endpoint,
+          protocols: registration.protocols,
+          skills: registration.skills.map(s => s.name),
+          timestamp: new Date().toISOString(),
+        });
+
+        hederaVerified = regResult.onChain;
+
+        // Track the registration transaction
+        hederaTransactions.push({
+          topicId: this.config.registryTopicId,
+          sequenceNumber: regResult.sequenceNumber,
+          timestamp: regResult.timestamp,
+          hashscanUrl: buildHashscanUrl(this.config.registryTopicId, regResult.sequenceNumber, network),
+          onChain: regResult.onChain,
+        });
+      } catch (err) {
+        // Graceful fallback: if testnet fails, use mock topics but log the error
+        console.warn(`Hedera testnet registration failed, falling back to mock: ${err instanceof Error ? err.message : 'Unknown error'}`);
+        inboundTopic = this.config.registryTopicId;
+        outboundTopic = this.config.registryTopicId;
+        profileTopic = this.config.registryTopicId;
+      }
     } else {
       // Mock: generate local topic IDs
       inboundTopic = this.config.registryTopicId;
@@ -90,12 +116,14 @@ export class HCS10Client {
     const agent: RegisteredAgent = {
       ...registration,
       agent_id: `0.0.${Date.now()}${++this.counter}`,
-      inbound_topic: inboundTopic,
-      outbound_topic: outboundTopic,
-      profile_topic: profileTopic,
+      inbound_topic: inboundTopic!,
+      outbound_topic: outboundTopic!,
+      profile_topic: profileTopic!,
       reputation_score: 0,
       status: 'online',
       registered_at: new Date().toISOString(),
+      hedera_verified: hederaVerified,
+      hedera_transactions: hederaTransactions,
     };
     return agent;
   }
