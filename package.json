@@ -1,6 +1,6 @@
 {
   "name": "hedera-agent-marketplace",
-  "version": "0.29.0",
+  "version": "0.30.0",
   "description": "Decentralized agent marketplace on Hedera — agent registration, discovery, payments, and reputation using HCS-10/11/14/19/20/26 standards",
   "main": "dist/index.js",
   "scripts": {
@@ -22,7 +22,9 @@
     "hcs-19",
     "hcs-20",
     "hcs-26",
-    "a2a"
+    "a2a",
+    "mcp",
+    "multi-protocol"
   ],
   "author": "OpSpawn <opspawnhq@gmail.com>",
   "license": "MIT",

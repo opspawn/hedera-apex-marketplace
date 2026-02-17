@@ -565,7 +565,7 @@ function getDashboardHTML(): string {
       <div class="logo" aria-hidden="true">H</div>
       <div>
         <h1><span>Hedera</span> Agent Marketplace</h1>
-        <div style="font-size:0.7rem; color:#6a7a9a; margin-top:0.15rem;">v0.29.0 &middot; <span id="testnet-mode" style="color:#00c853;">Testnet</span> &middot; Account <span style="color:#00d4ff;">0.0.7854018</span></div>
+        <div style="font-size:0.7rem; color:#6a7a9a; margin-top:0.15rem;">v0.30.0 &middot; <span id="testnet-mode" style="color:#00c853;">Testnet</span> &middot; Account <span style="color:#00d4ff;">0.0.7854018</span></div>
       </div>
     </div>
     <div class="header-right" aria-label="Supported HCS Standards">
@@ -910,6 +910,14 @@ function getDashboardHTML(): string {
           <h3 style="color:#fff; margin-bottom:1rem; font-size:1rem;">Protocol Usage</h3>
           <div id="protocol-chart"></div>
         </div>
+        <!-- Trust Score Distribution -->
+        <div style="background:#111827; border-radius:12px; padding:1.5rem; border:1px solid #1e2a4a;">
+          <h3 style="color:#fff; margin-bottom:1rem; font-size:1rem;">Trust Score Distribution</h3>
+          <div id="trust-distribution-chart"></div>
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; margin-top:1.5rem;">
         <!-- Demo Stats -->
         <div style="background:#111827; border-radius:12px; padding:1.5rem; border:1px solid #1e2a4a;">
           <h3 style="color:#fff; margin-bottom:1rem; font-size:1rem;">Demo Flow Stats</h3>
@@ -926,6 +934,23 @@ function getDashboardHTML(): string {
               <span style="color:#8892b0;">Total Consents (HCS-19)</span>
               <span style="color:#a855f7; font-weight:600;" id="analytics-consents">0</span>
             </div>
+          </div>
+        </div>
+        <!-- Multi-Protocol Interop -->
+        <div style="background:#111827; border-radius:12px; padding:1.5rem; border:1px solid #1e2a4a;">
+          <h3 style="color:#fff; margin-bottom:1rem; font-size:1rem;">Multi-Protocol Interop</h3>
+          <div id="protocol-interop-chart">
+            <div style="display:flex; flex-wrap:wrap; gap:0.5rem;">
+              <span style="background:rgba(0,212,255,0.15); color:#00d4ff; padding:0.4rem 0.8rem; border-radius:20px; font-size:0.8rem; border:1px solid rgba(0,212,255,0.3);">HCS-10</span>
+              <span style="background:rgba(0,212,255,0.15); color:#00d4ff; padding:0.4rem 0.8rem; border-radius:20px; font-size:0.8rem; border:1px solid rgba(0,212,255,0.3);">HCS-11</span>
+              <span style="background:rgba(0,212,255,0.15); color:#00d4ff; padding:0.4rem 0.8rem; border-radius:20px; font-size:0.8rem; border:1px solid rgba(0,212,255,0.3);">HCS-14</span>
+              <span style="background:rgba(168,85,247,0.15); color:#a855f7; padding:0.4rem 0.8rem; border-radius:20px; font-size:0.8rem; border:1px solid rgba(168,85,247,0.3);">HCS-19</span>
+              <span style="background:rgba(0,200,83,0.15); color:#00c853; padding:0.4rem 0.8rem; border-radius:20px; font-size:0.8rem; border:1px solid rgba(0,200,83,0.3);">HCS-20</span>
+              <span style="background:rgba(255,170,0,0.15); color:#ffaa00; padding:0.4rem 0.8rem; border-radius:20px; font-size:0.8rem; border:1px solid rgba(255,170,0,0.3);">HCS-26</span>
+              <span style="background:rgba(78,205,196,0.15); color:#4ecdc4; padding:0.4rem 0.8rem; border-radius:20px; font-size:0.8rem; border:1px solid rgba(78,205,196,0.3);">A2A</span>
+              <span style="background:rgba(255,107,107,0.15); color:#ff6b6b; padding:0.4rem 0.8rem; border-radius:20px; font-size:0.8rem; border:1px solid rgba(255,107,107,0.3);">MCP</span>
+            </div>
+            <p style="color:#6a7a9a; font-size:0.8rem; margin-top:1rem;">8 protocols supported. HCS-10 + A2A + MCP bridged for cross-protocol agent interop.</p>
           </div>
         </div>
       </div>
@@ -1013,9 +1038,45 @@ function getDashboardHTML(): string {
         });
         if (!chartHtml) chartHtml = '<p style="color:#6a7a9a; font-size:0.85rem;">No protocol data yet. Register agents to see usage breakdown.</p>';
         document.getElementById('protocol-chart').innerHTML = chartHtml;
+
+        // Load chart data for trust distribution
+        try {
+          var chartResp = await fetch('/api/analytics/charts');
+          var chartData = await chartResp.json();
+          renderTrustDistribution(chartData.trust_distribution || {});
+        } catch (ce) {
+          console.error('Failed to load chart data:', ce);
+        }
       } catch (e) {
         console.error('Failed to load analytics:', e);
       }
+    }
+
+    function renderTrustDistribution(dist) {
+      var levels = [
+        { key: 'elite', label: 'Elite', color: '#ffaa00' },
+        { key: 'verified', label: 'Verified', color: '#00c853' },
+        { key: 'trusted', label: 'Trusted', color: '#00d4ff' },
+        { key: 'basic', label: 'Basic', color: '#a855f7' },
+        { key: 'new', label: 'New', color: '#6a7a9a' },
+      ];
+      var total = 0;
+      levels.forEach(function(l) { total += (dist[l.key] || 0); });
+      var html = '';
+      levels.forEach(function(l) {
+        var count = dist[l.key] || 0;
+        var pct = total > 0 ? Math.round((count / total) * 100) : 0;
+        html += '<div style="margin-bottom:0.75rem;">';
+        html += '<div style="display:flex; justify-content:space-between; margin-bottom:0.25rem;">';
+        html += '<span style="color:#e0e0e0; font-size:0.85rem;">' + l.label + '</span>';
+        html += '<span style="color:' + l.color + '; font-size:0.8rem;">' + count + ' agents (' + pct + '%)</span>';
+        html += '</div>';
+        html += '<div style="height:8px; background:#1e2a4a; border-radius:4px; overflow:hidden;">';
+        html += '<div style="height:100%; width:' + Math.max(2, pct) + '%; background:' + l.color + '; border-radius:4px; transition:width 0.5s;"></div>';
+        html += '</div></div>';
+      });
+      if (!html) html = '<p style="color:#6a7a9a; font-size:0.85rem;">No trust data yet. Register agents to see trust distribution.</p>';
+      document.getElementById('trust-distribution-chart').innerHTML = html;
     }
 
     // Show skeleton loading

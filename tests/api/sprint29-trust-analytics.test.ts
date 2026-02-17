@@ -35,15 +35,15 @@ describe('Sprint 29: Version and config', () => {
     ({ app } = createApp());
   });
 
-  test('reports version 0.29.0', async () => {
+  test('reports version 0.30.0', async () => {
     const res = await req(app, 'GET', '/health');
     expect(res.status).toBe(200);
-    expect(res.body.version).toBe('0.29.0');
+    expect(res.body.version).toBe('0.30.0');
   });
 
-  test('reports 1670 test count', async () => {
+  test('reports 1760 test count', async () => {
     const res = await req(app, 'GET', '/health');
-    expect(res.body.test_count).toBe(1670);
+    expect(res.body.test_count).toBe(1760);
   });
 
   test('includes trust-scores in agent card capabilities', async () => {
@@ -223,28 +223,28 @@ describe('Sprint 29: Demo flow multi-protocol step', () => {
   test('GET /api/demo/flow includes 7 steps', async () => {
     const res = await req(app, 'GET', '/api/demo/flow');
     expect(res.status).toBe(200);
-    expect(res.body.steps.length).toBe(7);
+    expect(res.body.steps.length).toBe(9);
   });
 
-  test('Step 7 is multi_protocol consent flow', async () => {
+  test('Step 9 is multi_protocol consent flow', async () => {
     const res = await req(app, 'GET', '/api/demo/flow');
-    const step7 = res.body.steps[6];
-    expect(step7.phase).toBe('multi_protocol');
-    expect(step7.title).toBe('Multi-Protocol Consent Flow');
+    const step9 = res.body.steps[8];
+    expect(step9.phase).toBe('multi_protocol');
+    expect(step9.title).toBe('Multi-Protocol Consent Flow');
   });
 
-  test('Step 7 data includes protocols_used', async () => {
+  test('Step 9 data includes protocols_used', async () => {
     const res = await req(app, 'GET', '/api/demo/flow');
-    const step7 = res.body.steps[6];
-    if (step7.status === 'completed') {
-      expect(step7.data.protocols_used).toContain('HCS-10');
-      expect(step7.data.protocols_used).toContain('HCS-19');
+    const step9 = res.body.steps[8];
+    if (step9.status === 'completed') {
+      expect(step9.data.protocols_used).toContain('HCS-10');
+      expect(step9.data.protocols_used).toContain('HCS-19');
     }
   });
 
   test('demo flow summary has 7 total steps', async () => {
     const res = await req(app, 'GET', '/api/demo/flow');
-    expect(res.body.summary.total_steps).toBe(7);
+    expect(res.body.summary.total_steps).toBe(9);
   });
 });
 

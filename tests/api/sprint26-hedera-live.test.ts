@@ -7,7 +7,7 @@
  * - Live stats endpoint returns Hedera metrics
  * - Demo record flow includes 7 steps (with Hedera tx + live stats)
  * - Chat message length validation
- * - Version bump to 0.29.0
+ * - Version bump to 0.30.0
  */
 
 import { createApp } from '../../src/index';
@@ -44,14 +44,14 @@ describe('Sprint 26: Live Hedera Testnet + Demo Polish', () => {
   // Version & Stats
   // =============================================
 
-  test('GET /health returns v0.29.0', async () => {
+  test('GET /health returns v0.30.0', async () => {
     const res = await req(app, 'GET', '/health');
-    expect(res.body.version).toBe('0.29.0');
+    expect(res.body.version).toBe('0.30.0');
   });
 
-  test('GET /api/stats returns v0.29.0 with hedera section', async () => {
+  test('GET /api/stats returns v0.30.0 with hedera section', async () => {
     const res = await req(app, 'GET', '/api/stats');
-    expect(res.body.version).toBe('0.29.0');
+    expect(res.body.version).toBe('0.30.0');
     expect(res.body.hedera).toBeDefined();
     expect(res.body.hedera.mode).toBeDefined();
     expect(res.body.hedera.network).toBe('testnet');
@@ -67,7 +67,7 @@ describe('Sprint 26: Live Hedera Testnet + Demo Polish', () => {
     expect(typeof res.body.topics_created).toBe('number');
     expect(typeof res.body.active_connections).toBe('number');
     expect(res.body.hedera_network).toBe('testnet');
-    expect(res.body.version).toBe('0.29.0');
+    expect(res.body.version).toBe('0.30.0');
     expect(res.body.timestamp).toBeDefined();
   });
 
@@ -230,8 +230,8 @@ describe('Sprint 26: Live Hedera Testnet + Demo Polish', () => {
   // Agent Card Version
   // =============================================
 
-  test('agent-card.json has version 0.29.0', async () => {
+  test('agent-card.json has version 0.30.0', async () => {
     const res = await req(app, 'GET', '/.well-known/agent-card.json');
-    expect(res.body.version).toBe('0.29.0');
+    expect(res.body.version).toBe('0.30.0');
   });
 });

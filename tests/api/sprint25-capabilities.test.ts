@@ -37,9 +37,9 @@ describe('Sprint 25: API Capabilities', () => {
     expect(res.body.capabilities).toContain('natural-language-chat');
   });
 
-  test('agent-card has version 0.29.0', async () => {
+  test('agent-card has version 0.30.0', async () => {
     const res = await req(app, '/.well-known/agent-card.json');
-    expect(res.body.version).toBe('0.29.0');
+    expect(res.body.version).toBe('0.30.0');
   });
 
   test('agent.json mirrors agent-card.json', async () => {
@@ -65,6 +65,6 @@ describe('Sprint 25: API Capabilities', () => {
   test('ready endpoint returns true', async () => {
     const res = await req(app, '/ready');
     expect(res.body.ready).toBe(true);
-    expect(res.body.version).toBe('0.29.0');
+    expect(res.body.version).toBe('0.30.0');
   });
 });
