@@ -26,12 +26,14 @@ This marketplace integrates **10+ HCS standards** into a single agent economy:
 ┌──────────────────────────────────────────────────────────┐
 │                    Web Dashboard                          │
 │   Marketplace │ Registry │ Activity │ Register │ Demo     │
+│   HOL Registry │ Agent Chat (LLM-powered)                │
 └─────────────────────────┬────────────────────────────────┘
                           │
 ┌─────────────────────────▼────────────────────────────────┐
 │                    REST API (Express 5)                    │
 │   /api/marketplace/* │ /api/agents/* │ /api/skills/*      │
 │   /api/privacy/*     │ /api/v1/points/* │ /api/demo/*     │
+│   /api/chat/*        │ /api/registry/*  │ /api/stats      │
 └───────┬──────────────┬──────────────┬────────────────────┘
         │              │              │
 ┌───────▼──┐   ┌──────▼──────┐   ┌──▼──────────────────┐
@@ -133,6 +135,7 @@ npx ts-node src/demo/recorder.ts
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/health` | Health check (version, uptime, standards, test count) |
+| GET | `/api/stats` | Stats for submission forms (version, testCount, hcsStandards, agentsRegistered) |
 
 ### Agent Registry (HCS-10)
 | Method | Path | Description |
@@ -175,6 +178,29 @@ npx ts-node src/demo/recorder.ts
 | POST | `/api/demo/run` | Trigger 7-step demo flow |
 | GET | `/api/demo/status` | Poll demo state |
 
+### Chat Agent
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/chat` | Chat UI (LLM-powered agent assistant) |
+| POST | `/api/chat/session` | Create chat session |
+| POST | `/api/chat/message` | Send message to agent |
+| GET | `/api/chat/history/:sessionId` | Get chat history |
+
+### HOL Registry Broker
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/registry/register` | Register with HOL Registry Broker |
+| GET | `/api/registry/status` | Registry Broker status |
+| GET | `/api/registry/verify` | Verify agent in broker index |
+| POST | `/api/registry/register-live` | Live HOL registration |
+
+### HCS-10 Connections
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/agent/connect` | Accept a connection request |
+| GET | `/api/agent/connections` | List active connections |
+| POST | `/api/agent/connections/:id/message` | Send message on connection |
+
 ### Discovery
 | Method | Path | Description |
 |--------|------|-------------|
@@ -191,6 +217,9 @@ src/
     routes.ts                 # 22 REST API endpoints
   dashboard/
     index.ts                  # Web dashboard + demo page
+  chat/
+    chat-server.ts            # LLM-powered chat agent + UI
+    chat-agent.ts             # Chat agent logic
   demo/
     flow.ts                   # 7-step demo orchestration
     recorder.ts               # Demo recording script
@@ -208,10 +237,14 @@ src/
     marketplace-service.ts    # Multi-HCS orchestration
     skill-listing.ts          # Skill catalog
     search.ts                 # Full-text search
+  hol/
+    registry-broker.ts        # HOL Registry Broker integration
+    connection-handler.ts     # HCS-10 connection handler
+    registry-auth.ts          # Live registry authentication
   seed/
     index.ts                  # Seed orchestration
-    demo-agents.ts            # Demo agent definitions
-tests/                        # 21 test suites, 260+ tests
+    demo-agents.ts            # 8 demo agent definitions
+tests/                        # 69 test suites, 1335+ tests
 ```
 
 ## Docker
@@ -230,7 +263,7 @@ docker run -p 3000:3000 --env-file .env hedera-agent-marketplace
 - **Runtime**: Node.js 22, TypeScript 5.7
 - **Server**: Express 5
 - **Hedera**: @hashgraph/sdk 2.80+, @hashgraphonline/standards-sdk 0.1.158
-- **Testing**: Jest + ts-jest (260+ tests, 21 suites)
+- **Testing**: Jest + ts-jest (1335+ tests, 69 suites)
 - **Container**: Docker + docker-compose
 
 ## Live Deployment

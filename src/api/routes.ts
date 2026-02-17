@@ -36,8 +36,8 @@ import { RegistryAuth } from '../hol/registry-auth';
 import { AgentRegistration, ConsentRequest, SearchQuery, SkillManifest } from '../types';
 
 // Test count managed as a constant — updated each sprint
-const TEST_COUNT = 1322;
-const VERSION = '0.18.0';
+const TEST_COUNT = 1335;
+const VERSION = '0.19.0';
 const STANDARDS = ['HCS-10', 'HCS-11', 'HCS-14', 'HCS-19', 'HCS-20', 'HCS-26'];
 
 export function createRouter(
@@ -722,6 +722,26 @@ export function createRouter(
       const message = err instanceof Error ? err.message : 'Unknown error';
       res.status(500).json({ error: 'close_failed', message });
     }
+  });
+
+  // ==========================================
+  // Stats endpoint (for submission forms)
+  // ==========================================
+  router.get('/api/stats', (_req: Request, res: Response) => {
+    const uptimeMs = Date.now() - appStartTime;
+    const uptimeSeconds = Math.floor(uptimeMs / 1000);
+    const hours = Math.floor(uptimeSeconds / 3600);
+    const minutes = Math.floor((uptimeSeconds % 3600) / 60);
+    const seconds = uptimeSeconds % 60;
+
+    res.json({
+      version: VERSION,
+      testCount: TEST_COUNT,
+      hcsStandards: STANDARDS,
+      uptime: `${hours}h ${minutes}m ${seconds}s`,
+      uptime_seconds: uptimeSeconds,
+      agentsRegistered: marketplace ? marketplace.getAgentCount() : registry.getCount(),
+    });
   });
 
   // A2A agent card — used by other agents and judges for discovery
