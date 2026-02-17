@@ -47,7 +47,7 @@ describe('Readiness & Health Endpoints (Sprint 14)', () => {
     const res = await request(app, 'GET', '/health');
     expect(res.status).toBe(200);
     expect(res.body.version).toBe('0.18.0');
-    expect(res.body.test_count).toBe(1300);
+    expect(res.body.test_count).toBe(1322);
   });
 
   test('health endpoint includes uptime', async () => {

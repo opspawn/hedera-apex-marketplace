@@ -1,6 +1,6 @@
 {
   "name": "hedera-agent-marketplace",
-  "version": "0.17.0",
+  "version": "0.18.0",
   "description": "Decentralized agent marketplace on Hedera — agent registration, discovery, payments, and reputation using HCS-10/11/14/19/20/26 standards",
   "main": "dist/index.js",
   "scripts": {

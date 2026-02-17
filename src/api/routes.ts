@@ -36,7 +36,7 @@ import { RegistryAuth } from '../hol/registry-auth';
 import { AgentRegistration, ConsentRequest, SearchQuery, SkillManifest } from '../types';
 
 // Test count managed as a constant — updated each sprint
-const TEST_COUNT = 1300;
+const TEST_COUNT = 1322;
 const VERSION = '0.18.0';
 const STANDARDS = ['HCS-10', 'HCS-11', 'HCS-14', 'HCS-19', 'HCS-20', 'HCS-26'];
 

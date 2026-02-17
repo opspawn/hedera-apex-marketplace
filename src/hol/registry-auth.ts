@@ -43,7 +43,7 @@ export interface LiveVerificationResult {
   timestamp: string;
 }
 
-const REGISTRATION_STATE_PATH = path.join(process.cwd(), '.registry-state.json');
+const REGISTRATION_STATE_PATH = path.join(process.cwd(), 'state', 'registry-registration.json');
 
 export class RegistryAuth {
   private config: LiveRegistrationConfig;
@@ -159,6 +159,10 @@ export class RegistryAuth {
 
   private saveState(): void {
     try {
+      const dir = path.dirname(REGISTRATION_STATE_PATH);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
       fs.writeFileSync(REGISTRATION_STATE_PATH, JSON.stringify(this.registrationState, null, 2));
     } catch {
       // Non-fatal — state won't persist across restarts

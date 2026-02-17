@@ -217,7 +217,7 @@ export class RegistryBroker {
         endpoint,
         metadata: {
           provider: 'opspawn',
-          version: '0.17.0',
+          version: '0.18.0',
           standards: ['HCS-10', 'HCS-11', 'HCS-14', 'HCS-19', 'HCS-20', 'HCS-26'],
         },
       };

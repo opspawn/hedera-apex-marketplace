@@ -129,7 +129,7 @@ describe('Demo API Validation', () => {
 
     it('should report updated test count', async () => {
       const res = await request(app, 'GET', '/health');
-      expect(res.body.test_count).toBe(1300);
+      expect(res.body.test_count).toBe(1322);
     });
 
     it('should list 6 HCS standards', async () => {
