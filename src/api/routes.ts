@@ -35,10 +35,11 @@ import { ConnectionHandler } from '../hol/connection-handler';
 import { RegistryAuth } from '../hol/registry-auth';
 import { AgentRegistration, ConsentRequest, SearchQuery, SkillManifest } from '../types';
 import { FullDemoFlow } from '../demo/full-flow';
+import { TestnetIntegration } from '../hedera/testnet-integration';
 
 // Test count managed as a constant — updated each sprint
-const TEST_COUNT = 1500;
-const VERSION = '0.23.0';
+const TEST_COUNT = 1550;
+const VERSION = '0.24.0';
 const STANDARDS = ['HCS-10', 'HCS-11', 'HCS-14', 'HCS-19', 'HCS-20', 'HCS-26'];
 
 export function createRouter(
@@ -52,6 +53,7 @@ export function createRouter(
   registryBroker?: RegistryBroker,
   connectionHandler?: ConnectionHandler,
   registryAuth?: RegistryAuth,
+  testnetIntegration?: TestnetIntegration,
 ): Router {
   const router = Router();
   const appStartTime = startTime || Date.now();
@@ -94,6 +96,27 @@ export function createRouter(
   });
   router.get('/api/ready', (_req: Request, res: Response) => {
     res.json({ ready: true, version: VERSION, timestamp: new Date().toISOString() });
+  });
+
+  // ==========================================
+  // Testnet Status
+  // ==========================================
+  router.get('/api/testnet/status', (_req: Request, res: Response) => {
+    if (!testnetIntegration) {
+      res.json({ mode: 'mock', network: 'testnet', connected: false });
+      return;
+    }
+    const status = testnetIntegration.getStatus();
+    const session = testnetIntegration.getSessionSummary();
+    res.json({
+      ...status,
+      session: {
+        topicsCreated: session.topicsCreated,
+        messagesSubmitted: session.messagesSubmitted,
+        onChainTopics: session.onChainTopics,
+        onChainMessages: session.onChainMessages,
+      },
+    });
   });
 
   // ==========================================
@@ -440,6 +463,9 @@ export function createRouter(
         q: req.query.q as string | undefined,
         category: req.query.category as string | undefined,
         tags: req.query.tags ? (req.query.tags as string).split(',') : undefined,
+        skill: req.query.skill as string | undefined,
+        standard: req.query.standard as string | undefined,
+        name: req.query.name as string | undefined,
         verifiedOnly: req.query.verifiedOnly === 'true',
         minReputation: req.query.minReputation ? parseInt(req.query.minReputation as string) : undefined,
         status: req.query.status as string | undefined,

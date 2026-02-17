@@ -121,7 +121,7 @@ export function createApp() {
   app.use(express.json());
 
   // Mount routes
-  app.use(createRouter(registry, hcs19, hcs26, marketplace, hcs20, START_TIME, demoFlow, registryBroker, connectionHandler, registryAuth));
+  app.use(createRouter(registry, hcs19, hcs26, marketplace, hcs20, START_TIME, demoFlow, registryBroker, connectionHandler, registryAuth, testnetIntegration));
   app.use(createChatRouter({
     chatAgentConfig: {
       registryBroker,

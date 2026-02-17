@@ -380,7 +380,10 @@ function getDashboardHTML(): string {
   <header class="header" role="banner">
     <div class="header-left">
       <div class="logo" aria-hidden="true">H</div>
-      <h1><span>Hedera</span> Agent Marketplace</h1>
+      <div>
+        <h1><span>Hedera</span> Agent Marketplace</h1>
+        <div style="font-size:0.7rem; color:#6a7a9a; margin-top:0.15rem;">v0.24.0 &middot; <span id="testnet-mode" style="color:#00c853;">Testnet</span> &middot; Account <span style="color:#00d4ff;">0.0.7854018</span></div>
+      </div>
     </div>
     <div class="header-right" aria-label="Supported HCS Standards">
       <span class="header-badge">HCS-10</span>
@@ -391,6 +394,19 @@ function getDashboardHTML(): string {
       <span class="header-badge">HCS-26</span>
     </div>
   </header>
+
+  <!-- Testnet Status Banner -->
+  <div id="testnet-banner" style="background:linear-gradient(90deg, rgba(0,200,83,0.08) 0%, rgba(0,212,255,0.08) 100%); padding:0.5rem 2rem; border-bottom:1px solid rgba(0,200,83,0.2); display:flex; align-items:center; justify-content:space-between; font-size:0.78rem;">
+    <div style="display:flex; align-items:center; gap:0.75rem;">
+      <span id="testnet-dot" style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#00c853; animation:pulse 2s infinite;"></span>
+      <span style="color:#e0e0e0;">Live Hedera Testnet</span>
+      <span style="color:#6a7a9a;">&middot;</span>
+      <span style="color:#00d4ff;" id="testnet-topics">0 topics</span>
+      <span style="color:#6a7a9a;">&middot;</span>
+      <span style="color:#a855f7;" id="testnet-messages">0 messages</span>
+    </div>
+    <span style="color:#6a7a9a;" id="testnet-info">Loading...</span>
+  </div>
 
   <!-- Navigation -->
   <nav class="nav" id="nav" role="tablist" aria-label="Dashboard Navigation">
@@ -797,6 +813,10 @@ function getDashboardHTML(): string {
               \${ma.points ? '<span style="font-size:0.8rem; color:#a855f7;">' + ma.points.total_points + ' pts</span>' : ''}
             </div>
             <div>\${skills.map(function(s, i) { return '<span class="skill-tag skill-tag-' + (i % 6) + '">' + esc(s.name) + '</span>'; }).join('')}</div>
+            <div style="margin-top:0.5rem; display:flex; gap:0.25rem; flex-wrap:wrap;">\${(a.protocols || []).map(function(p) {
+              var color = p.includes('hcs') ? '#00d4ff' : p.includes('a2a') ? '#00c853' : p.includes('mcp') ? '#a855f7' : p.includes('x402') ? '#ffaa00' : '#6a7a9a';
+              return '<span style="font-size:0.6rem; padding:0.12rem 0.4rem; border-radius:4px; background:rgba(255,255,255,0.04); border:1px solid ' + color + '30; color:' + color + ';">' + esc(p) + '</span>';
+            }).join('')}</div>
             <div class="agent-identity">
               DID: <code>\${esc(identity.did || 'pending')}</code>
               \${publishedSkills.length ? ' &middot; ' + publishedSkills.length + ' published skill(s)' : ''}
@@ -1459,11 +1479,42 @@ function getDashboardHTML(): string {
       setTimeout(function() { btn.disabled = false; btn.textContent = 'Register with HOL'; btn.style.background = ''; }, 5000);
     }
 
+    // Load testnet status
+    async function loadTestnetStatus() {
+      try {
+        const res = await fetch('/api/testnet/status');
+        const data = await res.json();
+        const modeEl = document.getElementById('testnet-mode');
+        const infoEl = document.getElementById('testnet-info');
+        const topicsEl = document.getElementById('testnet-topics');
+        const msgsEl = document.getElementById('testnet-messages');
+        const dotEl = document.getElementById('testnet-dot');
+        if (data.mode === 'live') {
+          modeEl.textContent = 'Live Testnet';
+          modeEl.style.color = '#00c853';
+          dotEl.style.background = '#00c853';
+          infoEl.textContent = 'Connected to Hedera ' + data.network;
+        } else {
+          modeEl.textContent = 'Mock Mode';
+          modeEl.style.color = '#ffaa00';
+          dotEl.style.background = '#ffaa00';
+          infoEl.textContent = 'No testnet credentials';
+        }
+        if (data.session) {
+          topicsEl.textContent = data.session.topicsCreated + ' topics (' + data.session.onChainTopics + ' on-chain)';
+          msgsEl.textContent = data.session.messagesSubmitted + ' messages (' + data.session.onChainMessages + ' on-chain)';
+        }
+      } catch (e) {
+        document.getElementById('testnet-info').textContent = 'Status unavailable';
+      }
+    }
+
     // Initial load
     searchMarketplace();
     searchRegistry();
     loadInitialActivity();
     loadHolStatus();
+    loadTestnetStatus();
   </script>
 </body>
 </html>`;
@@ -2170,7 +2221,7 @@ function getDemoFlowHTML(): string {
   <div class="header">
     <div style="display: flex; align-items: center; gap: 12px;">
       <h1>Hedera Agent Marketplace</h1>
-      <span class="badge">v0.23.0</span>
+      <span class="badge">v0.24.0</span>
     </div>
     <nav>
       <a href="/">Dashboard</a>

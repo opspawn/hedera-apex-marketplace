@@ -40,6 +40,9 @@ export interface DiscoveryCriteria {
   q?: string;
   category?: string;
   tags?: string[];
+  skill?: string;
+  standard?: string;
+  name?: string;
   verifiedOnly?: boolean;
   minReputation?: number;
   status?: string;
@@ -216,6 +219,33 @@ export class MarketplaceService {
         a.skills.some(s =>
           (s.tags || []).some(t => lowerTags.includes(t.toLowerCase())),
         ),
+      );
+    }
+
+    // Skill name filter
+    if (criteria.skill) {
+      const sk = criteria.skill.toLowerCase();
+      agents = agents.filter(a =>
+        a.skills.some(s =>
+          s.name.toLowerCase().includes(sk) ||
+          s.id.toLowerCase().includes(sk),
+        ),
+      );
+    }
+
+    // Standard/protocol filter
+    if (criteria.standard) {
+      const std = criteria.standard.toLowerCase();
+      agents = agents.filter(a =>
+        a.protocols.some(p => p.toLowerCase().includes(std)),
+      );
+    }
+
+    // Name filter (exact-ish match)
+    if (criteria.name) {
+      const nm = criteria.name.toLowerCase();
+      agents = agents.filter(a =>
+        a.name.toLowerCase().includes(nm),
       );
     }
 
