@@ -1,0 +1,50 @@
+{
+  "name": "hedera-agent-marketplace",
+  "version": "0.16.0",
+  "description": "Decentralized agent marketplace on Hedera — agent registration, discovery, payments, and reputation using HCS-10/11/14/19/20/26 standards",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsup",
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts",
+    "test": "jest --forceExit --detectOpenHandles",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "lint": "eslint src/ --ext .ts"
+  },
+  "keywords": [
+    "hedera",
+    "agent",
+    "marketplace",
+    "hcs-10",
+    "hcs-11",
+    "hcs-14",
+    "hcs-19",
+    "hcs-20",
+    "hcs-26",
+    "a2a"
+  ],
+  "author": "OpSpawn <opspawnhq@gmail.com>",
+  "license": "MIT",
+  "dependencies": {
+    "@hashgraph/sdk": "^2.80.0",
+    "@hashgraphonline/conversational-agent": "^0.2.220",
+    "@hashgraphonline/standards-sdk": "^0.1.159",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^5.0.1",
+    "uuid": "^11.1.0"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "@types/jest": "^29.5.14",
+    "@types/node": "^22.12.0",
+    "@types/uuid": "^10.0.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.4.6",
+    "ts-node": "^10.9.2",
+    "tsup": "^8.5.1",
+    "typescript": "5.7"
+  }
+}
