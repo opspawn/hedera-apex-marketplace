@@ -1,11 +1,32 @@
 /**
  * HOL (Hashgraph Online) Integration Module
  *
- * Exports Registry Broker registration and HCS-10 connection handling.
+ * Exports Registry Broker registration, search, vector search, skills,
+ * HCS-10 connection handling, and ERC-8004 on-chain feedback.
  */
 
 export { RegistryBroker } from './registry-broker';
-export type { RegistryBrokerConfig, RegistrationProfile, RegistrationResult, RegistryStatus } from './registry-broker';
+export type {
+  RegistryBrokerConfig,
+  RegistrationProfile,
+  RegistrationResult,
+  RegistryStatus,
+  AgentSearchQuery,
+  AgentSearchResult,
+  BrokerAgentEntry,
+  VectorSearchQuery,
+  VectorSearchResult,
+  BrokerSkillEntry,
+  SkillsListResult,
+} from './registry-broker';
 
 export { ConnectionHandler } from './connection-handler';
 export type { ConnectionHandlerConfig, ConnectionRequest, ActiveConnection, ConnectionMessage } from './connection-handler';
+
+export { AgentFeedbackManager } from './agent-feedback';
+export type {
+  AgentFeedback,
+  FeedbackSubmission,
+  AgentFeedbackSummary,
+  FeedbackQuery,
+} from './agent-feedback';

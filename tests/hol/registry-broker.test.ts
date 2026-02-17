@@ -17,6 +17,32 @@ jest.mock('@hashgraphonline/standards-sdk', () => ({
     search: jest.fn().mockResolvedValue({
       agents: [{ uaid: 'test-uaid-123', display_name: 'HireWire Agent Marketplace' }],
     }),
+    getAgent: jest.fn().mockResolvedValue({
+      uaid: 'test-uaid-123',
+      agentId: 'test-agent-456',
+      display_name: 'HireWire Agent Marketplace',
+      bio: 'Test agent',
+      tags: ['marketplace'],
+      protocol: 'hcs-10',
+    }),
+    vectorSearch: jest.fn().mockResolvedValue({
+      results: [
+        { uaid: 'vec-1', display_name: 'Summarizer Agent', score: 0.95, tags: ['nlp'] },
+        { uaid: 'vec-2', display_name: 'Code Agent', score: 0.82, tags: ['code'] },
+      ],
+      total: 2,
+    }),
+    listSkills: jest.fn().mockResolvedValue({
+      skills: [
+        { id: 'skill-1', name: 'text-summarization', description: 'Summarize text', category: 'nlp' },
+        { id: 'skill-2', name: 'code-review', description: 'Review code', category: 'dev' },
+      ],
+      total: 2,
+    }),
+    registerSkill: jest.fn().mockResolvedValue({
+      id: 'skill-new-123',
+      name: 'agent-discovery',
+    }),
   })),
 }));
 
@@ -137,6 +163,236 @@ describe('RegistryBroker', () => {
     it('should return the configured broker URL', () => {
       expect(broker.getBrokerUrl()).toBe('https://hol.org/registry/api/v1');
     });
+  });
+});
+
+describe('RegistryBroker searchAgents', () => {
+  let broker: RegistryBroker;
+
+  beforeEach(() => {
+    broker = new RegistryBroker(TEST_CONFIG);
+  });
+
+  it('should search agents with text query', async () => {
+    const result = await broker.searchAgents({ q: 'marketplace' });
+    expect(result.agents).toHaveLength(1);
+    expect(result.agents[0].display_name).toBe('HireWire Agent Marketplace');
+    expect(result.query.q).toBe('marketplace');
+    expect(result.timestamp).toBeTruthy();
+  });
+
+  it('should search agents with tag filter', async () => {
+    const result = await broker.searchAgents({ tags: ['hedera', 'marketplace'] });
+    expect(result.agents).toBeDefined();
+    expect(result.timestamp).toBeTruthy();
+  });
+
+  it('should search agents with protocol filter', async () => {
+    const result = await broker.searchAgents({ protocol: 'hcs-10' });
+    expect(result.agents).toBeDefined();
+  });
+
+  it('should search agents with type filter', async () => {
+    const result = await broker.searchAgents({ type: 'ai_agent' });
+    expect(result.agents).toBeDefined();
+  });
+
+  it('should search agents with pagination', async () => {
+    const result = await broker.searchAgents({ q: 'agent', limit: 5, offset: 0 });
+    expect(result.agents).toBeDefined();
+    expect(result.query.limit).toBe(5);
+    expect(result.query.offset).toBe(0);
+  });
+
+  it('should return empty results for no matches', async () => {
+    const result = await broker.searchAgents({ q: '' });
+    expect(result.agents).toBeDefined();
+    expect(result.total).toBeGreaterThanOrEqual(0);
+  });
+
+  it('should include total count in results', async () => {
+    const result = await broker.searchAgents({ q: 'test' });
+    expect(typeof result.total).toBe('number');
+  });
+});
+
+describe('RegistryBroker getAgentProfile', () => {
+  let broker: RegistryBroker;
+
+  beforeEach(() => {
+    broker = new RegistryBroker(TEST_CONFIG);
+  });
+
+  it('should get agent by UAID', async () => {
+    const agent = await broker.getAgentProfile('test-uaid-123');
+    expect(agent).not.toBeNull();
+    expect(agent?.display_name).toBe('HireWire Agent Marketplace');
+    expect(agent?.uaid).toBe('test-uaid-123');
+  });
+
+  it('should get agent by agent ID', async () => {
+    const agent = await broker.getAgentProfile('test-agent-456');
+    expect(agent).not.toBeNull();
+    expect(agent?.display_name).toBe('HireWire Agent Marketplace');
+  });
+
+  it('should return agent tags', async () => {
+    const agent = await broker.getAgentProfile('test-uaid-123');
+    expect(agent?.tags).toContain('marketplace');
+  });
+
+  it('should return agent protocol', async () => {
+    const agent = await broker.getAgentProfile('test-uaid-123');
+    expect(agent?.protocol).toBe('hcs-10');
+  });
+
+  it('should return agent bio', async () => {
+    const agent = await broker.getAgentProfile('test-uaid-123');
+    expect(agent?.bio).toBe('Test agent');
+  });
+});
+
+describe('RegistryBroker vectorSearch', () => {
+  let broker: RegistryBroker;
+
+  beforeEach(() => {
+    broker = new RegistryBroker(TEST_CONFIG);
+  });
+
+  it('should perform vector search with text query', async () => {
+    const result = await broker.vectorSearch({ text: 'summarize documents' });
+    expect(result.results).toHaveLength(2);
+    expect(result.method).toBe('vector');
+    expect(result.query).toBe('summarize documents');
+    expect(result.timestamp).toBeTruthy();
+  });
+
+  it('should return scored results', async () => {
+    const result = await broker.vectorSearch({ text: 'summarize' });
+    expect(result.results[0].score).toBe(0.95);
+    expect(result.results[1].score).toBe(0.82);
+  });
+
+  it('should respect topK parameter', async () => {
+    const result = await broker.vectorSearch({ text: 'agents', topK: 5 });
+    expect(result.results).toBeDefined();
+  });
+
+  it('should respect threshold parameter', async () => {
+    const result = await broker.vectorSearch({ text: 'agents', threshold: 0.8 });
+    expect(result.results).toBeDefined();
+  });
+
+  it('should support filter parameter', async () => {
+    const result = await broker.vectorSearch({
+      text: 'code review',
+      filter: { protocol: 'hcs-10' },
+    });
+    expect(result.results).toBeDefined();
+    expect(result.method).toBe('vector');
+  });
+
+  it('should return total count', async () => {
+    const result = await broker.vectorSearch({ text: 'test' });
+    expect(result.total).toBe(2);
+  });
+
+  it('should return agent display names', async () => {
+    const result = await broker.vectorSearch({ text: 'test' });
+    expect(result.results[0].display_name).toBe('Summarizer Agent');
+    expect(result.results[1].display_name).toBe('Code Agent');
+  });
+
+  it('should return agent tags from vector search', async () => {
+    const result = await broker.vectorSearch({ text: 'test' });
+    expect(result.results[0].tags).toContain('nlp');
+    expect(result.results[1].tags).toContain('code');
+  });
+});
+
+describe('RegistryBroker getSkills', () => {
+  let broker: RegistryBroker;
+
+  beforeEach(() => {
+    broker = new RegistryBroker(TEST_CONFIG);
+  });
+
+  it('should list available skills', async () => {
+    const result = await broker.getSkills();
+    expect(result.skills).toHaveLength(2);
+    expect(result.total).toBe(2);
+    expect(result.timestamp).toBeTruthy();
+  });
+
+  it('should return skill details', async () => {
+    const result = await broker.getSkills();
+    expect(result.skills[0].id).toBe('skill-1');
+    expect(result.skills[0].name).toBe('text-summarization');
+    expect(result.skills[0].description).toBe('Summarize text');
+    expect(result.skills[0].category).toBe('nlp');
+  });
+
+  it('should filter skills by category', async () => {
+    const result = await broker.getSkills({ category: 'nlp' });
+    expect(result.skills).toBeDefined();
+  });
+
+  it('should filter skills by tags', async () => {
+    const result = await broker.getSkills({ tags: ['ai'] });
+    expect(result.skills).toBeDefined();
+  });
+
+  it('should limit results', async () => {
+    const result = await broker.getSkills({ limit: 1 });
+    expect(result.skills).toBeDefined();
+  });
+});
+
+describe('RegistryBroker registerSkill', () => {
+  let broker: RegistryBroker;
+
+  beforeEach(() => {
+    broker = new RegistryBroker(TEST_CONFIG);
+  });
+
+  it('should register a new skill', async () => {
+    const skill = await broker.registerSkill({
+      name: 'agent-discovery',
+      description: 'Find agents across protocols',
+      category: 'infrastructure',
+      tags: ['discovery', 'cross-protocol'],
+      version: '1.0.0',
+    });
+    expect(skill).not.toBeNull();
+    expect(skill?.name).toBe('agent-discovery');
+    expect(skill?.id).toBe('skill-new-123');
+  });
+
+  it('should return skill with description', async () => {
+    const skill = await broker.registerSkill({
+      name: 'test-skill',
+      description: 'Test description',
+    });
+    expect(skill?.description).toBe('Test description');
+  });
+
+  it('should include version in registered skill', async () => {
+    const skill = await broker.registerSkill({
+      name: 'test-skill',
+      description: 'Test',
+      version: '2.0.0',
+    });
+    expect(skill?.version).toBe('2.0.0');
+  });
+
+  it('should include pricing in registered skill', async () => {
+    const skill = await broker.registerSkill({
+      name: 'paid-skill',
+      description: 'A paid skill',
+      pricing: { amount: 100, token: 'HBAR', unit: 'per_call' },
+    });
+    expect(skill?.pricing?.amount).toBe(100);
+    expect(skill?.pricing?.token).toBe('HBAR');
   });
 });
 
