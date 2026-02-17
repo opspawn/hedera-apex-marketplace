@@ -72,9 +72,9 @@ describe('Dashboard', () => {
     expect(res.body).toContain('id="stat-hires"');
     expect(res.body).toContain('id="stat-active"');
     expect(res.body).toContain('Registered Agents');
+    expect(res.body).toContain('Connections');
+    expect(res.body).toContain('Messages');
     expect(res.body).toContain('Published Skills');
-    expect(res.body).toContain('Total Hires');
-    expect(res.body).toContain('Active Listings');
   });
 
   test('dashboard contains marketplace view with category filter', async () => {

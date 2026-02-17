@@ -321,6 +321,8 @@ function getChatHTML(): string {
     @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
     @keyframes spin { to { transform: rotate(360deg); } }
     @keyframes slideIn { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: translateX(0); } }
+    @keyframes glowPulse { 0%, 100% { box-shadow: 0 0 4px rgba(0,212,255,0.2); } 50% { box-shadow: 0 0 12px rgba(0,212,255,0.4); } }
+    @keyframes typeIn { from { opacity: 0; max-height: 0; } to { opacity: 1; max-height: 500px; } }
 
     /* Header */
     .header { background: linear-gradient(135deg, #0d1528 0%, #131b30 50%, #0f1a2e 100%); padding: 1rem 1.5rem; border-bottom: 1px solid #1e2a4a; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
@@ -335,8 +337,8 @@ function getChatHTML(): string {
     /* Status bar */
     .status-bar { background: #0d1528; padding: 0.5rem 1.5rem; border-bottom: 1px solid #1e2a4a; display: flex; align-items: center; gap: 0.75rem; font-size: 0.8rem; flex-shrink: 0; }
     .status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-    .status-dot.ok { background: #00c853; }
-    .status-dot.warn { background: #ffaa00; }
+    .status-dot.ok { background: #00c853; animation: glowPulse 2s ease infinite; }
+    .status-dot.warn { background: #ffaa00; animation: pulse 1.5s ease infinite; }
     .status-dot.error { background: #ff4444; }
     .status-text { color: #6a7a9a; }
     .status-text strong { color: #a0b0d0; }
@@ -350,12 +352,12 @@ function getChatHTML(): string {
     .welcome h2 { font-size: 1.5rem; color: #fff; margin-bottom: 0.75rem; }
     .welcome p { color: #6a7a9a; font-size: 0.95rem; line-height: 1.6; margin-bottom: 1.5rem; }
     .suggestions { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 0.75rem; }
-    .suggestion { padding: 0.85rem 1rem; background: #111827; border: 1px solid #1e2a4a; border-radius: 10px; color: #a0b0d0; font-size: 0.85rem; cursor: pointer; transition: all 0.2s; text-align: left; }
-    .suggestion:hover { border-color: rgba(0, 212, 255, 0.4); background: rgba(0, 212, 255, 0.05); color: #00d4ff; }
+    .suggestion { padding: 0.85rem 1rem; background: #111827; border: 1px solid #1e2a4a; border-radius: 10px; color: #a0b0d0; font-size: 0.85rem; cursor: pointer; transition: all 0.25s ease; text-align: left; }
+    .suggestion:hover { border-color: rgba(0, 212, 255, 0.5); background: rgba(0, 212, 255, 0.08); color: #00d4ff; transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0, 212, 255, 0.1); }
     .suggestion .suggestion-label { font-size: 0.7rem; color: #6a7a9a; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.3rem; }
 
     /* Message bubbles */
-    .message { display: flex; gap: 0.75rem; max-width: 80%; animation: fadeInUp 0.3s ease; }
+    .message { display: flex; gap: 0.75rem; max-width: 80%; animation: fadeInUp 0.35s ease; }
     .message.user { align-self: flex-end; flex-direction: row-reverse; }
     .message.agent { align-self: flex-start; }
     .message-avatar { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; flex-shrink: 0; font-weight: 600; }
@@ -461,8 +463,8 @@ function getChatHTML(): string {
           Connect to agent 0.0.12345
         </div>
         <div class="suggestion" onclick="sendSuggestion(this)">
-          <div class="suggestion-label">Messages</div>
-          Check my messages
+          <div class="suggestion-label">Skills</div>
+          Show available agent skills
         </div>
       </div>
     </div>
@@ -538,7 +540,7 @@ function getChatHTML(): string {
           '<div class="suggestion" onclick="sendSuggestion(this)"><div class="suggestion-label">Register</div>Register me as a data analyst agent</div>' +
           '<div class="suggestion" onclick="sendSuggestion(this)"><div class="suggestion-label">Discover</div>Find agents that can analyze financial data</div>' +
           '<div class="suggestion" onclick="sendSuggestion(this)"><div class="suggestion-label">Connect</div>Connect to agent 0.0.12345</div>' +
-          '<div class="suggestion" onclick="sendSuggestion(this)"><div class="suggestion-label">Messages</div>Check my messages</div>' +
+          '<div class="suggestion" onclick="sendSuggestion(this)"><div class="suggestion-label">Skills</div>Show available agent skills</div>' +
         '</div></div>';
     }
 
@@ -659,16 +661,36 @@ function getChatHTML(): string {
 
     function formatContent(text) {
       if (!text) return '';
-      // Basic markdown-ish formatting
+      // Code blocks first (before escaping HTML)
+      var codeBlocks = [];
+      text = text.replace(/\`\`\`([\\s\\S]*?)\`\`\`/g, function(m, code) {
+        var idx = codeBlocks.length;
+        codeBlocks.push('<pre><code>' + escapeHtml(code.trim()) + '</code></pre>');
+        return '%%CODEBLOCK_' + idx + '%%';
+      });
+      // Inline code (before escaping)
+      var inlineCodes = [];
+      text = text.replace(/\`([^\`]+)\`/g, function(m, code) {
+        var idx = inlineCodes.length;
+        inlineCodes.push('<code>' + escapeHtml(code) + '</code>');
+        return '%%INLINE_' + idx + '%%';
+      });
       text = escapeHtml(text);
       // Bold
       text = text.replace(/\\*\\*(.+?)\\*\\*/g, '<strong>$1</strong>');
-      // Inline code
-      text = text.replace(/\`([^\`]+)\`/g, '<code>$1</code>');
-      // Code blocks
-      text = text.replace(/\`\`\`([\\s\\S]*?)\`\`\`/g, '<pre><code>$1</code></pre>');
+      // Numbered lists
+      text = text.replace(/^(\\d+)\\.\\s+(.+)$/gm, '<div style="margin-left:1rem;">$1. $2</div>');
+      // Bullet lists
+      text = text.replace(/^[\\-\\*]\\s+(.+)$/gm, '<div style="margin-left:1rem;"><span style="color:#00d4ff;">&#x25B8;</span> $1</div>');
       // Line breaks
       text = text.replace(/\\n/g, '<br>');
+      // Restore code blocks and inline codes
+      for (var i = 0; i < codeBlocks.length; i++) {
+        text = text.replace('%%CODEBLOCK_' + i + '%%', codeBlocks[i]);
+      }
+      for (var j = 0; j < inlineCodes.length; j++) {
+        text = text.replace('%%INLINE_' + j + '%%', inlineCodes[j]);
+      }
       return text;
     }
 

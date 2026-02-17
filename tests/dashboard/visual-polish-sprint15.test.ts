@@ -80,11 +80,11 @@ describe('Sprint 15: Stat Cards Visual Polish', () => {
   });
 
   test('stat cards have emoji icons', () => {
-    // Robot, puzzle, check, chart
+    // Robot, plug, chat, puzzle
     expect(html).toContain('&#x1F916;');
+    expect(html).toContain('&#x1F50C;');
+    expect(html).toContain('&#x1F4AC;');
     expect(html).toContain('&#x1F9E9;');
-    expect(html).toContain('&#x2705;');
-    expect(html).toContain('&#x1F4C8;');
   });
 
   test('stat icon is positioned top-right with opacity', () => {

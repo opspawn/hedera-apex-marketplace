@@ -198,6 +198,14 @@ function detectIntent(message: string): DetectedIntent {
     return { tool: 'vector_search', args: { text: message }, confidence: 0.85 };
   }
 
+  // Skills listing intent
+  if (
+    /\b(skills?|capabilities|tools|what can)\b/.test(lower) &&
+    /\b(show|list|available|have|support)\b/.test(lower)
+  ) {
+    return { tool: 'list_skills', args: {}, confidence: 0.85 };
+  }
+
   // General search intent
   if (
     /\b(find|search|list|show|browse|discover|look)\b/.test(lower)
@@ -335,6 +343,12 @@ export class ChatAgent {
           response = result.message;
           break;
         }
+        case 'list_skills': {
+          const result = await this.executeListSkills();
+          actions.push({ tool: 'list_skills', args: {}, result });
+          response = result.message;
+          break;
+        }
         default: {
           response = this.getHelpResponse();
           break;
@@ -387,6 +401,7 @@ export class ChatAgent {
       'create_chat_session',
       'relay_message',
       'get_relay_history',
+      'list_skills',
     ];
   }
 
@@ -672,6 +687,37 @@ export class ChatAgent {
       success: true,
       data: { sessionId: session.sessionId, messages: history },
       message: `Chat relay history (${history.length} messages):\n${msgList}`,
+    };
+  }
+
+  private async executeListSkills(): Promise<ToolResult> {
+    const result = await this.broker.searchAgents({ limit: 20 });
+    const skillSet = new Set<string>();
+    for (const agent of result.agents) {
+      if (agent.capabilities) {
+        for (const cap of agent.capabilities) {
+          skillSet.add(cap);
+        }
+      }
+      if (agent.tags) {
+        for (const tag of agent.tags) {
+          skillSet.add(tag);
+        }
+      }
+    }
+    const skills = Array.from(skillSet).slice(0, 20);
+    if (skills.length === 0) {
+      return {
+        success: true,
+        data: { skills: [] },
+        message: 'No skills found in the marketplace yet. Register an agent with skills to get started!',
+      };
+    }
+    const skillList = skills.map((s, i) => `${i + 1}. **${s}**`).join('\n');
+    return {
+      success: true,
+      data: { skills, agentCount: result.total },
+      message: `Available skills across ${result.total} agents:\n${skillList}`,
     };
   }
 

@@ -38,8 +38,8 @@ import { FullDemoFlow } from '../demo/full-flow';
 import { TestnetIntegration } from '../hedera/testnet-integration';
 
 // Test count managed as a constant — updated each sprint
-const TEST_COUNT = 1550;
-const VERSION = '0.24.0';
+const TEST_COUNT = 1600;
+const VERSION = '0.25.0';
 const STANDARDS = ['HCS-10', 'HCS-11', 'HCS-14', 'HCS-19', 'HCS-20', 'HCS-26'];
 
 export function createRouter(
@@ -1162,7 +1162,7 @@ export function createRouter(
     version: VERSION,
     description: 'Decentralized agent marketplace on Hedera — agent registration, discovery, payments, and reputation using HCS-10/11/14/19/20/26 standards',
     url: 'https://hedera-apex.opspawn.com',
-    capabilities: ['agent-registration', 'agent-discovery', 'privacy-consent', 'skill-publishing', 'reputation-points', 'hcs-10-connections', 'chat-relay', 'agent-connections', 'full-flow-demo'],
+    capabilities: ['agent-registration', 'agent-discovery', 'privacy-consent', 'skill-publishing', 'reputation-points', 'hcs-10-connections', 'chat-relay', 'agent-connections', 'full-flow-demo', 'demo-recording', 'natural-language-chat'],
     protocols: ['hcs-10', 'hcs-11', 'hcs-14', 'hcs-19', 'hcs-20', 'hcs-26'],
     endpoints: {
       health: '/health',
