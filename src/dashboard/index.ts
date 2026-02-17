@@ -565,7 +565,7 @@ function getDashboardHTML(): string {
       <div class="logo" aria-hidden="true">H</div>
       <div>
         <h1><span>Hedera</span> Agent Marketplace</h1>
-        <div style="font-size:0.7rem; color:#6a7a9a; margin-top:0.15rem;">v0.32.0 &middot; <span id="testnet-mode" style="color:#00c853;">Testnet</span> &middot; Account <span style="color:#00d4ff;">0.0.7854018</span></div>
+        <div style="font-size:0.7rem; color:#6a7a9a; margin-top:0.15rem;">v0.33.0 &middot; <span id="testnet-mode" style="color:#00c853;">Testnet</span> &middot; Account <span style="color:#00d4ff;">0.0.7854018</span></div>
       </div>
     </div>
     <div class="header-right" aria-label="Supported HCS Standards">
@@ -602,6 +602,7 @@ function getDashboardHTML(): string {
     <div class="nav-tab" data-view="demo" role="tab" tabindex="0" aria-selected="false" aria-controls="view-demo" style="color:#00c853;">Live Demo</div>
     <div class="nav-tab" data-view="analytics" role="tab" tabindex="0" aria-selected="false" aria-controls="view-analytics" style="color:#f59e0b;">Analytics</div>
     <div class="nav-tab" data-view="reachability" role="tab" tabindex="0" aria-selected="false" aria-controls="view-reachability" style="color:#00c853;">Reachability</div>
+    <div class="nav-tab" data-view="dual-identity" role="tab" tabindex="0" aria-selected="false" aria-controls="view-dual-identity" style="color:#ff6b6b;">Dual Identity</div>
     <a href="/chat" class="nav-tab" style="color:#00d4ff; text-decoration:none;" title="Chat with Hedera Agent">&#x1F4AC; Agent Chat</a>
   </nav>
 
@@ -1071,6 +1072,101 @@ function getDashboardHTML(): string {
       </div>
     </div>
 
+    <!-- Dual Identity View -->
+    <div class="view" id="view-dual-identity" role="tabpanel" aria-labelledby="tab-dual-identity">
+      <h2 style="color:#fff; margin-bottom:1rem;">ERC-8004 Dual Identity</h2>
+      <p style="color:#8892b0; margin-bottom:1.5rem;">Cross-chain agent identity linking HCS-10 (Hedera) with ERC-8004 (Base Sepolia). Dual identity provides enhanced trust signals from on-chain reputation.</p>
+
+      <div class="stats">
+        <div class="stat-card">
+          <span class="stat-icon">&#x1F517;</span>
+          <div class="value" id="dual-chain-id">84532</div>
+          <div class="label">Chain ID (Base Sepolia)</div>
+        </div>
+        <div class="stat-card">
+          <span class="stat-icon">&#x2705;</span>
+          <div class="value" id="dual-linked-count">0</div>
+          <div class="label">Linked Identities</div>
+        </div>
+        <div class="stat-card">
+          <span class="stat-icon">&#x1F6E1;</span>
+          <div class="value" id="dual-trust-boost">+0</div>
+          <div class="label">Trust Boost</div>
+        </div>
+        <div class="stat-card">
+          <span class="stat-icon">&#x1F310;</span>
+          <div class="value" id="dual-network">base-sepolia</div>
+          <div class="label">Network</div>
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; margin-top:1.5rem;">
+        <!-- HCS-10 Identity -->
+        <div style="background:#111827; border-radius:12px; padding:1.5rem; border:1px solid #1e2a4a;">
+          <h3 style="color:#00d4ff; margin-bottom:1rem; font-size:1rem;">HCS-10 Identity (Hedera)</h3>
+          <div id="dual-hcs10-info">
+            <div style="display:flex; justify-content:space-between; padding:0.5rem 0; border-bottom:1px solid #1e2a4a;">
+              <span style="color:#8892b0;">Protocol</span>
+              <span style="color:#00d4ff; font-weight:600;">HCS-10</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; padding:0.5rem 0; border-bottom:1px solid #1e2a4a;">
+              <span style="color:#8892b0;">Status</span>
+              <span style="color:#00c853; font-weight:600;">Registered</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; padding:0.5rem 0; border-bottom:1px solid #1e2a4a;">
+              <span style="color:#8892b0;">Network</span>
+              <span style="color:#fff;">Hedera Testnet</span>
+            </div>
+          </div>
+        </div>
+        <!-- ERC-8004 Identity -->
+        <div style="background:#111827; border-radius:12px; padding:1.5rem; border:1px solid #1e2a4a;">
+          <h3 style="color:#ff6b6b; margin-bottom:1rem; font-size:1rem;">ERC-8004 Identity (Base Sepolia)</h3>
+          <div id="dual-erc8004-info">
+            <div style="display:flex; justify-content:space-between; padding:0.5rem 0; border-bottom:1px solid #1e2a4a;">
+              <span style="color:#8892b0;">Registry Type</span>
+              <span style="color:#ff6b6b; font-weight:600;">ERC-8004</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; padding:0.5rem 0; border-bottom:1px solid #1e2a4a;">
+              <span style="color:#8892b0;">Chain ID</span>
+              <span style="color:#fff;" id="dual-erc-chain">84532</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; padding:0.5rem 0; border-bottom:1px solid #1e2a4a;">
+              <span style="color:#8892b0;">Linked</span>
+              <span id="dual-erc-linked" style="font-weight:600; color:#ffaa00;">Checking...</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cross-Chain Verification Badge -->
+      <div style="background:#111827; border-radius:12px; padding:1.5rem; border:1px solid #1e2a4a; margin-top:1.5rem;">
+        <h3 style="color:#fff; margin-bottom:1rem; font-size:1rem;">Cross-Chain Verification Status</h3>
+        <div id="dual-verification-badge" style="display:flex; align-items:center; gap:1rem; padding:1rem; border-radius:8px; background:rgba(255,170,0,0.08); border:1px solid rgba(255,170,0,0.2);">
+          <span style="font-size:2rem;">&#x1F50D;</span>
+          <div>
+            <div style="color:#ffaa00; font-weight:600; font-size:1.1rem;">Verification Pending</div>
+            <div style="color:#8892b0; font-size:0.85rem;">Link ERC-8004 identity to enable cross-chain verification</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Trust Score Comparison -->
+      <div style="background:#111827; border-radius:12px; padding:1.5rem; border:1px solid #1e2a4a; margin-top:1.5rem;">
+        <h3 style="color:#fff; margin-bottom:1rem; font-size:1rem;">Trust Score Comparison</h3>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+          <div style="text-align:center; padding:1rem; background:rgba(0,212,255,0.05); border-radius:8px; border:1px solid rgba(0,212,255,0.15);">
+            <div style="color:#8892b0; font-size:0.8rem; margin-bottom:0.5rem;">HCS-10 Only</div>
+            <div style="color:#00d4ff; font-size:2rem; font-weight:700;" id="dual-trust-hcs10">0</div>
+          </div>
+          <div style="text-align:center; padding:1rem; background:rgba(0,200,83,0.05); border-radius:8px; border:1px solid rgba(0,200,83,0.15);">
+            <div style="color:#8892b0; font-size:0.8rem; margin-bottom:0.5rem;">Dual Identity (HCS-10 + ERC-8004)</div>
+            <div style="color:#00c853; font-size:2rem; font-weight:700;" id="dual-trust-combined">0</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
 
   <!-- Agent Detail Modal -->
@@ -1126,6 +1222,7 @@ function getDashboardHTML(): string {
       if (tab.dataset.view === 'connections') { loadConnections(); }
       if (tab.dataset.view === 'analytics') { loadAnalytics(); }
       if (tab.dataset.view === 'reachability') { loadReachability(); }
+      if (tab.dataset.view === 'dual-identity') { loadDualIdentity(); }
     }
 
     // Load analytics data
@@ -1791,6 +1888,46 @@ function getDashboardHTML(): string {
         }
       } catch (e) {
         document.getElementById('reach-inbound-log').innerHTML = '<div style="color:#ff4444; font-size:0.85rem;">Error loading reachability data: ' + e.message + '</div>';
+      }
+    }
+
+    async function loadDualIdentity() {
+      try {
+        var resp = await fetch('/api/identity/dual');
+        var data = await resp.json();
+        document.getElementById('dual-linked-count').textContent = data.totalLinked || 0;
+        document.getElementById('dual-chain-id').textContent = data.chainId || 84532;
+        document.getElementById('dual-network').textContent = data.network || 'base-sepolia';
+
+        // Update ERC-8004 linked status
+        var ercLinked = document.getElementById('dual-erc-linked');
+        if (data.totalLinked > 0) {
+          ercLinked.textContent = 'Linked';
+          ercLinked.style.color = '#00c853';
+        } else {
+          ercLinked.textContent = 'Not Linked';
+          ercLinked.style.color = '#ff4444';
+        }
+
+        // Update verification badge
+        var badge = document.getElementById('dual-verification-badge');
+        if (data.totalLinked > 0) {
+          badge.style.background = 'rgba(0,200,83,0.08)';
+          badge.style.borderColor = 'rgba(0,200,83,0.2)';
+          badge.innerHTML = '<span style="font-size:2rem;">&#x2705;</span><div><div style="color:#00c853; font-weight:600; font-size:1.1rem;">Cross-Chain Verified</div><div style="color:#8892b0; font-size:0.85rem;">HCS-10 + ERC-8004 dual identity active on base-sepolia (chain ' + data.chainId + ')</div></div>';
+        }
+
+        // Update trust comparison from profiles
+        if (data.profiles && data.profiles.length > 0) {
+          var p = data.profiles[0];
+          var boost = p.trustBoost || {};
+          document.getElementById('dual-trust-hcs10').textContent = boost.baseScore || 0;
+          document.getElementById('dual-trust-combined').textContent = boost.totalScore || 0;
+          document.getElementById('dual-trust-boost').textContent = '+' + (boost.erc8004Boost || 0);
+        }
+      } catch (e) {
+        document.getElementById('dual-erc-linked').textContent = 'Error';
+        document.getElementById('dual-erc-linked').style.color = '#ff4444';
       }
     }
 

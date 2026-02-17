@@ -32,7 +32,7 @@ describe('Readiness & Health Endpoints (Sprint 14)', () => {
     const res = await request(app, 'GET', '/ready');
     expect(res.status).toBe(200);
     expect(res.body.ready).toBe(true);
-    expect(res.body.version).toBe('0.32.0');
+    expect(res.body.version).toBe('0.33.0');
     expect(res.body.timestamp).toBeDefined();
   });
 
@@ -40,14 +40,14 @@ describe('Readiness & Health Endpoints (Sprint 14)', () => {
     const res = await request(app, 'GET', '/api/ready');
     expect(res.status).toBe(200);
     expect(res.body.ready).toBe(true);
-    expect(res.body.version).toBe('0.32.0');
+    expect(res.body.version).toBe('0.33.0');
   });
 
   test('health endpoint reports updated version', async () => {
     const res = await request(app, 'GET', '/health');
     expect(res.status).toBe(200);
-    expect(res.body.version).toBe('0.32.0');
-    expect(res.body.test_count).toBe(1950);
+    expect(res.body.version).toBe('0.33.0');
+    expect(res.body.test_count).toBe(2100);
   });
 
   test('health endpoint includes uptime', async () => {
@@ -75,6 +75,6 @@ describe('Readiness & Health Endpoints (Sprint 14)', () => {
   test('agent-card.json has updated version', async () => {
     const res = await request(app, 'GET', '/.well-known/agent-card.json');
     expect(res.status).toBe(200);
-    expect(res.body.version).toBe('0.32.0');
+    expect(res.body.version).toBe('0.33.0');
   });
 });

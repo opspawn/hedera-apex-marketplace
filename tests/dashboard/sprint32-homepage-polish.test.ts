@@ -4,7 +4,7 @@
  * Verifies the landing page immediately communicates value:
  * - Hero section with stats
  * - CTA buttons (Chat + Register)
- * - Version v0.32.0
+ * - Version v0.33.0
  * - Test count display
  * - Navigation between dashboard tabs
  */
@@ -96,9 +96,9 @@ describe('Sprint 32: Homepage Polish', () => {
   // ===== Version & Standards =====
 
   describe('version and standards', () => {
-    test('should show version 0.32.0', async () => {
+    test('should show version 0.33.0', async () => {
       const res = await request(server, 'GET', '/');
-      expect(res.text).toContain('v0.32.0');
+      expect(res.text).toContain('v0.33.0');
     });
 
     test('should list all 6 HCS standards', async () => {

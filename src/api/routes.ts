@@ -38,10 +38,11 @@ import { FullDemoFlow } from '../demo/full-flow';
 import { TestnetIntegration } from '../hedera/testnet-integration';
 import { TrustScoreTracker } from '../marketplace/trust-score';
 import { AnalyticsTracker } from '../marketplace/analytics';
+import { ERC8004IdentityManager } from '../hol/erc8004-identity';
 
 // Test count managed as a constant — updated each sprint
-const TEST_COUNT = 1950;
-const VERSION = '0.32.0';
+const TEST_COUNT = 2100;
+const VERSION = '0.33.0';
 const STANDARDS = ['HCS-10', 'HCS-11', 'HCS-14', 'HCS-19', 'HCS-20', 'HCS-26'];
 
 export function createRouter(
@@ -58,6 +59,7 @@ export function createRouter(
   testnetIntegration?: TestnetIntegration,
   trustTracker?: TrustScoreTracker,
   analyticsTracker?: AnalyticsTracker,
+  erc8004Manager?: ERC8004IdentityManager,
 ): Router {
   const router = Router();
   const appStartTime = startTime || Date.now();
@@ -1961,6 +1963,117 @@ export function createRouter(
         chat_endpoint: '/api/chat/agent',
       },
     });
+  });
+
+  // ==========================================
+  // ERC-8004 Dual Identity Routes
+  // ==========================================
+
+  // GET /api/erc8004/status — ERC-8004 linking status for our agent
+  router.get('/api/erc8004/status', (_req: Request, res: Response) => {
+    if (!erc8004Manager) {
+      // Return default status even without manager — shows the feature exists
+      const defaultManager = new ERC8004IdentityManager();
+      res.json({
+        chainId: defaultManager.getChainId(),
+        brokerUrl: defaultManager.getBrokerUrl(),
+        linked: false,
+        linkedIdentities: 0,
+        registryType: 'erc-8004',
+        network: 'base-sepolia',
+        timestamp: new Date().toISOString(),
+      });
+      return;
+    }
+    const identities = erc8004Manager.getAllLinkedIdentities();
+    res.json({
+      chainId: erc8004Manager.getChainId(),
+      brokerUrl: erc8004Manager.getBrokerUrl(),
+      linked: identities.length > 0,
+      linkedIdentities: identities.length,
+      identities: identities.map(i => ({
+        uaid: i.uaid,
+        contractAddress: i.identity.contractAddress,
+        chainId: i.identity.chainId,
+        linkedAt: i.identity.linkedAt,
+      })),
+      registryType: 'erc-8004',
+      network: 'base-sepolia',
+      timestamp: new Date().toISOString(),
+    });
+  });
+
+  // GET /api/erc8004/verify/:uaid — Verify dual identity for any agent
+  router.get('/api/erc8004/verify/:uaid', async (req: Request, res: Response) => {
+    const uaid = String(req.params.uaid);
+    const manager = erc8004Manager || new ERC8004IdentityManager();
+    try {
+      const verification = await manager.verifyDualIdentity(uaid);
+      const identity = manager.getLinkedIdentity(uaid);
+      res.json({
+        uaid,
+        verification,
+        identity: identity || null,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      res.status(500).json({ error: 'verification_failed', message });
+    }
+  });
+
+  // POST /api/erc8004/link — Trigger ERC-8004 linking for our agent
+  router.post('/api/erc8004/link', async (req: Request, res: Response) => {
+    const manager = erc8004Manager || new ERC8004IdentityManager();
+    try {
+      const { uaid } = req.body;
+      if (!uaid) {
+        res.status(400).json({ error: 'validation_error', message: 'uaid is required' });
+        return;
+      }
+      const result = await manager.linkERC8004Identity(uaid);
+      const statusCode = result.success ? 201 : 500;
+      res.status(statusCode).json(result);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      res.status(500).json({ error: 'link_failed', message });
+    }
+  });
+
+  // GET /api/identity/dual — Combined dual identity dashboard data
+  router.get('/api/identity/dual', async (_req: Request, res: Response) => {
+    const manager = erc8004Manager || new ERC8004IdentityManager();
+    try {
+      const identities = manager.getAllLinkedIdentities();
+      const profiles: Array<Record<string, unknown>> = [];
+
+      for (const { uaid } of identities) {
+        const profile = await manager.getDualIdentityProfile(uaid);
+        const trustBoost = await manager.getERC8004TrustBoost(uaid);
+        profiles.push({ ...profile, trustBoost });
+      }
+
+      // Also include our agent's status even if not linked
+      const agentUAID = registryBroker ? registryBroker.getStatus().uaid : null;
+      const hasOurAgent = agentUAID && identities.some(i => i.uaid === agentUAID);
+
+      res.json({
+        dualIdentityEnabled: true,
+        chainId: manager.getChainId(),
+        network: 'base-sepolia',
+        registryType: 'erc-8004',
+        totalLinked: identities.length,
+        ourAgent: {
+          uaid: agentUAID,
+          linked: hasOurAgent || false,
+        },
+        profiles,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      res.status(500).json({ error: 'dual_identity_failed', message });
+    }
   });
 
   // ==========================================

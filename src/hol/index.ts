@@ -40,3 +40,12 @@ export type {
   LiveRegistrationResult,
   LiveVerificationResult,
 } from './registry-auth';
+
+export { ERC8004IdentityManager } from './erc8004-identity';
+export type {
+  ERC8004Identity,
+  DualIdentityProfile,
+  ERC8004LinkConfig,
+  ERC8004TrustBoost,
+  LinkResult,
+} from './erc8004-identity';

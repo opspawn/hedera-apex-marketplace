@@ -29,6 +29,7 @@ import { RegistryAuth } from './hol/registry-auth';
 import { createChatRouter } from './chat';
 import { TrustScoreTracker } from './marketplace/trust-score';
 import { AnalyticsTracker } from './marketplace/analytics';
+import { ERC8004IdentityManager } from './hol/erc8004-identity';
 
 const START_TIME = Date.now();
 
@@ -121,13 +122,16 @@ export function createApp() {
     network: config.hedera.network,
   });
 
+  // Initialize ERC-8004 dual identity manager
+  const erc8004Manager = new ERC8004IdentityManager();
+
   // Create Express app
   const app = express();
   app.use(cors());
   app.use(express.json());
 
   // Mount routes
-  app.use(createRouter(registry, hcs19, hcs26, marketplace, hcs20, START_TIME, demoFlow, registryBroker, connectionHandler, registryAuth, testnetIntegration, trustTracker, analyticsTracker));
+  app.use(createRouter(registry, hcs19, hcs26, marketplace, hcs20, START_TIME, demoFlow, registryBroker, connectionHandler, registryAuth, testnetIntegration, trustTracker, analyticsTracker, erc8004Manager));
   app.use(createChatRouter({
     chatAgentConfig: {
       registryBroker,
@@ -136,7 +140,7 @@ export function createApp() {
   }));
   app.use(createDashboardRouter());
 
-  return { app, config, registry, marketplace, hcs10, hcs11, hcs14, hcs19, hcs19Identity, hcs26, hcs20, demoFlow, testnetIntegration, registryBroker, connectionHandler, registryAuth, trustTracker, analyticsTracker };
+  return { app, config, registry, marketplace, hcs10, hcs11, hcs14, hcs19, hcs19Identity, hcs26, hcs20, demoFlow, testnetIntegration, registryBroker, connectionHandler, registryAuth, trustTracker, analyticsTracker, erc8004Manager };
 }
 
 /**
