@@ -38,7 +38,7 @@ describe('Demo API Validation', () => {
     it('should return version field', async () => {
       const res = await request(app, 'GET', '/api/demo/status');
       expect(res.status).toBe(200);
-      expect(res.body.version).toBe('0.20.0');
+      expect(res.body.version).toBe('0.21.0');
     });
 
     it('should return endpoint field', async () => {
@@ -124,12 +124,12 @@ describe('Demo API Validation', () => {
     it('should return version 0.11.0', async () => {
       const res = await request(app, 'GET', '/health');
       expect(res.status).toBe(200);
-      expect(res.body.version).toBe('0.20.0');
+      expect(res.body.version).toBe('0.21.0');
     });
 
     it('should report updated test count', async () => {
       const res = await request(app, 'GET', '/health');
-      expect(res.body.test_count).toBe(1400);
+      expect(res.body.test_count).toBe(1450);
     });
 
     it('should list 6 HCS standards', async () => {

@@ -99,6 +99,12 @@ export function createDashboardRouter(): Router {
     }
   });
 
+  // Demo flow dashboard — interactive end-to-end demo runner
+  router.get('/demo-flow', (_req: Request, res: Response) => {
+    res.setHeader('Content-Type', 'text/html');
+    res.send(getDemoFlowHTML());
+  });
+
   // Marketplace stats endpoint for the dashboard
   router.get('/api/dashboard/stats', async (_req: Request, res: Response) => {
     res.json({
@@ -2001,6 +2007,250 @@ function getDemoWalkthroughHTML(): string {
     function scrollToScene(num) {
       const el = document.getElementById('scene-' + num);
       if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  </script>
+</body>
+</html>`;
+}
+
+function getDemoFlowHTML(): string {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Demo Flow — Hedera Agent Marketplace</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #080c14; color: #e0e0e0; min-height: 100vh; }
+    @keyframes fadeInUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+    .header { background: linear-gradient(135deg, #0a1628 0%, #0d2137 100%); border-bottom: 1px solid #1a3a5c; padding: 20px 32px; display: flex; align-items: center; justify-content: space-between; }
+    .header h1 { font-size: 22px; font-weight: 700; background: linear-gradient(135deg, #4fc3f7, #00e676); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .header .badge { background: #1a3a5c; color: #4fc3f7; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+    .header nav a { color: #4fc3f7; text-decoration: none; margin-left: 16px; font-size: 14px; opacity: 0.8; }
+    .header nav a:hover { opacity: 1; }
+
+    .container { max-width: 960px; margin: 0 auto; padding: 32px 24px; }
+
+    .hero { text-align: center; margin-bottom: 32px; }
+    .hero h2 { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
+    .hero p { color: #90a4ae; font-size: 15px; max-width: 640px; margin: 0 auto; }
+
+    .run-btn { display: inline-flex; align-items: center; gap: 8px; background: linear-gradient(135deg, #00c853, #00e676); color: #080c14; border: none; padding: 14px 36px; border-radius: 8px; font-size: 16px; font-weight: 700; cursor: pointer; transition: all 0.2s; }
+    .run-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 20px rgba(0, 230, 118, 0.3); }
+    .run-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+    .run-btn .spinner { display: none; width: 18px; height: 18px; border: 2px solid rgba(0,0,0,0.2); border-top-color: #080c14; border-radius: 50%; animation: spin 0.7s linear infinite; }
+    .run-btn.loading .spinner { display: inline-block; }
+    .run-btn.loading .btn-text { display: none; }
+
+    .steps-container { margin-top: 32px; }
+    .step-card { background: #0d1b2a; border: 1px solid #1a3a5c; border-radius: 10px; padding: 20px 24px; margin-bottom: 12px; animation: fadeInUp 0.4s ease; position: relative; overflow: hidden; }
+    .step-card.completed { border-color: #00c853; }
+    .step-card.failed { border-color: #ff5252; }
+    .step-card.running { border-color: #ffc107; }
+    .step-card.running::after { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, transparent, #ffc107, transparent); animation: pulse 1.5s ease-in-out infinite; }
+
+    .step-header { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+    .step-num { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; flex-shrink: 0; }
+    .step-card.completed .step-num { background: #00c853; color: #080c14; }
+    .step-card.failed .step-num { background: #ff5252; color: #fff; }
+    .step-card.running .step-num { background: #ffc107; color: #080c14; }
+    .step-card.pending .step-num { background: #263238; color: #546e7a; }
+    .step-title { font-size: 15px; font-weight: 600; }
+    .step-phase { font-size: 11px; color: #4fc3f7; background: rgba(79,195,247,0.1); padding: 2px 8px; border-radius: 4px; margin-left: auto; }
+    .step-duration { font-size: 12px; color: #78909c; margin-left: 8px; }
+
+    .step-detail { font-size: 13px; color: #b0bec5; margin-left: 40px; line-height: 1.5; }
+    .step-data { margin-top: 8px; margin-left: 40px; background: #0a1628; border-radius: 6px; padding: 10px 14px; font-family: 'SF Mono', monospace; font-size: 12px; color: #78909c; max-height: 200px; overflow-y: auto; white-space: pre-wrap; word-break: break-all; }
+    .step-error { margin-top: 8px; margin-left: 40px; color: #ff5252; font-size: 13px; }
+
+    .step-retry { margin-left: 40px; margin-top: 8px; }
+    .step-retry button { background: rgba(255,82,82,0.15); border: 1px solid #ff5252; color: #ff5252; padding: 4px 12px; border-radius: 4px; font-size: 12px; cursor: pointer; }
+    .step-retry button:hover { background: rgba(255,82,82,0.25); }
+
+    .summary-card { background: linear-gradient(135deg, #0d1b2a, #0a2540); border: 1px solid #1a3a5c; border-radius: 12px; padding: 24px; margin-top: 24px; animation: fadeInUp 0.5s ease; }
+    .summary-card h3 { font-size: 18px; margin-bottom: 16px; color: #4fc3f7; }
+    .summary-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+    .summary-stat { background: rgba(79,195,247,0.06); border-radius: 8px; padding: 12px; text-align: center; }
+    .summary-stat .val { font-size: 24px; font-weight: 700; color: #00e676; }
+    .summary-stat .label { font-size: 12px; color: #78909c; margin-top: 4px; }
+    .summary-stat.fail .val { color: #ff5252; }
+
+    .timing-bar { margin-top: 24px; }
+    .timing-bar h4 { font-size: 14px; color: #78909c; margin-bottom: 8px; }
+    .timing-row { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+    .timing-label { font-size: 12px; color: #b0bec5; width: 120px; flex-shrink: 0; }
+    .timing-track { flex: 1; height: 8px; background: #1a3a5c; border-radius: 4px; overflow: hidden; }
+    .timing-fill { height: 100%; background: linear-gradient(90deg, #00c853, #4fc3f7); border-radius: 4px; transition: width 0.5s ease; }
+    .timing-ms { font-size: 12px; color: #78909c; width: 60px; text-align: right; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <h1>Hedera Agent Marketplace</h1>
+      <span class="badge">v0.21.0</span>
+    </div>
+    <nav>
+      <a href="/">Dashboard</a>
+      <a href="/demo">Demo</a>
+      <a href="/demo-flow">Full Flow</a>
+      <a href="/health">Health</a>
+    </nav>
+  </div>
+
+  <div class="container">
+    <div class="hero">
+      <h2>End-to-End Demo Flow</h2>
+      <p>Run the complete marketplace pipeline: agent registration, skill publishing, discovery, connection, task execution, and feedback — all in one click.</p>
+    </div>
+
+    <div style="text-align: center; margin-bottom: 16px;">
+      <button class="run-btn" id="runBtn" onclick="runFullFlow()">
+        <span class="btn-text">Run Full Demo</span>
+        <span class="spinner"></span>
+      </button>
+    </div>
+
+    <div class="steps-container" id="stepsContainer"></div>
+    <div id="summaryContainer"></div>
+    <div id="timingContainer"></div>
+  </div>
+
+  <script>
+    let isRunning = false;
+
+    async function runFullFlow() {
+      if (isRunning) return;
+      isRunning = true;
+
+      const btn = document.getElementById('runBtn');
+      btn.classList.add('loading');
+      btn.disabled = true;
+
+      const stepsEl = document.getElementById('stepsContainer');
+      const summaryEl = document.getElementById('summaryContainer');
+      const timingEl = document.getElementById('timingContainer');
+      stepsEl.innerHTML = '';
+      summaryEl.innerHTML = '';
+      timingEl.innerHTML = '';
+
+      // Show placeholder pending steps
+      const phases = [
+        { phase: 'registration', title: 'Register Agent (HCS-19 Identity)' },
+        { phase: 'skills', title: 'Publish Skills (HCS-26)' },
+        { phase: 'discovery', title: 'Discover Agents (Registry Broker)' },
+        { phase: 'connection', title: 'Connect Agents (HCS-10)' },
+        { phase: 'execution', title: 'Execute Task (Chat Relay)' },
+        { phase: 'feedback', title: 'Submit Feedback (HCS-20 Points)' },
+      ];
+
+      phases.forEach((p, i) => {
+        stepsEl.innerHTML += buildStepCard({
+          step: i + 1, phase: p.phase, title: p.title,
+          status: i === 0 ? 'running' : 'pending',
+          detail: i === 0 ? 'Executing...' : 'Waiting...',
+          duration_ms: 0,
+        });
+      });
+
+      try {
+        const resp = await fetch('/api/demo/full-flow', { method: 'POST' });
+        const data = await resp.json();
+
+        stepsEl.innerHTML = '';
+        if (data.steps) {
+          data.steps.forEach(s => {
+            stepsEl.innerHTML += buildStepCard(s);
+          });
+        }
+
+        if (data.summary) {
+          summaryEl.innerHTML = buildSummary(data);
+        }
+
+        if (data.steps && data.steps.length > 0) {
+          timingEl.innerHTML = buildTimingChart(data.steps, data.total_duration_ms);
+        }
+      } catch (err) {
+        stepsEl.innerHTML = '<div class="step-card failed"><div class="step-header"><div class="step-num">!</div><div class="step-title">Request Failed</div></div><div class="step-error">' + err.message + '</div></div>';
+      }
+
+      btn.classList.remove('loading');
+      btn.disabled = false;
+      isRunning = false;
+    }
+
+    function buildStepCard(s) {
+      const statusClass = s.status || 'pending';
+      let html = '<div class="step-card ' + statusClass + '">';
+      html += '<div class="step-header">';
+      html += '<div class="step-num">' + (s.status === 'completed' ? '&#10003;' : s.status === 'failed' ? '&#10007;' : s.step) + '</div>';
+      html += '<div class="step-title">' + esc(s.title) + '</div>';
+      html += '<span class="step-phase">' + esc(s.phase) + '</span>';
+      if (s.duration_ms > 0) {
+        html += '<span class="step-duration">' + s.duration_ms + 'ms</span>';
+      }
+      html += '</div>';
+
+      if (s.detail) {
+        html += '<div class="step-detail">' + esc(s.detail) + '</div>';
+      }
+
+      if (s.data && Object.keys(s.data).length > 0) {
+        html += '<div class="step-data">' + esc(JSON.stringify(s.data, null, 2)) + '</div>';
+      }
+
+      if (s.error) {
+        html += '<div class="step-error">' + esc(s.error) + '</div>';
+      }
+
+      html += '</div>';
+      return html;
+    }
+
+    function buildSummary(data) {
+      const s = data.summary;
+      let html = '<div class="summary-card"><h3>Flow Summary</h3>';
+      html += '<div class="summary-grid">';
+      html += stat(s.completed_steps + '/' + s.total_steps, 'Steps Completed', s.failed_steps > 0);
+      html += stat(s.agent_registered || 'N/A', 'Agent Registered');
+      html += stat(s.skills_published, 'Skills Published');
+      html += stat(s.agents_discovered, 'Agents Discovered');
+      html += stat(s.connection_established ? 'Yes' : 'No', 'HCS-10 Connected');
+      html += stat(s.chat_relayed ? 'Yes' : 'No', 'Chat Relayed');
+      html += stat(s.feedback_submitted ? 'Yes' : 'No', 'Feedback Submitted');
+      html += stat(data.total_duration_ms + 'ms', 'Total Duration');
+      html += '</div></div>';
+      return html;
+    }
+
+    function stat(val, label, isFail) {
+      return '<div class="summary-stat' + (isFail ? ' fail' : '') + '"><div class="val">' + esc(String(val)) + '</div><div class="label">' + esc(label) + '</div></div>';
+    }
+
+    function buildTimingChart(steps, totalMs) {
+      if (!totalMs || totalMs === 0) return '';
+      let html = '<div class="timing-bar"><h4>Step Timing</h4>';
+      steps.forEach(s => {
+        const pct = Math.max(2, Math.round((s.duration_ms / totalMs) * 100));
+        html += '<div class="timing-row">';
+        html += '<div class="timing-label">' + esc(s.phase) + '</div>';
+        html += '<div class="timing-track"><div class="timing-fill" style="width:' + pct + '%"></div></div>';
+        html += '<div class="timing-ms">' + s.duration_ms + 'ms</div>';
+        html += '</div>';
+      });
+      html += '</div>';
+      return html;
+    }
+
+    function esc(s) {
+      const d = document.createElement('div');
+      d.textContent = s;
+      return d.innerHTML;
     }
   </script>
 </body>

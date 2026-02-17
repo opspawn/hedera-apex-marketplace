@@ -34,10 +34,11 @@ import { RegistryBroker } from '../hol/registry-broker';
 import { ConnectionHandler } from '../hol/connection-handler';
 import { RegistryAuth } from '../hol/registry-auth';
 import { AgentRegistration, ConsentRequest, SearchQuery, SkillManifest } from '../types';
+import { FullDemoFlow } from '../demo/full-flow';
 
 // Test count managed as a constant — updated each sprint
-const TEST_COUNT = 1400;
-const VERSION = '0.20.0';
+const TEST_COUNT = 1450;
+const VERSION = '0.21.0';
 const STANDARDS = ['HCS-10', 'HCS-11', 'HCS-14', 'HCS-19', 'HCS-20', 'HCS-26'];
 
 export function createRouter(
@@ -556,6 +557,36 @@ export function createRouter(
       steps: state.steps,
       summary: state.summary || null,
     });
+  });
+
+  // POST /api/demo/full-flow — End-to-end marketplace demo (all 6 HCS standards)
+  router.post('/api/demo/full-flow', async (_req: Request, res: Response) => {
+    if (!marketplace) {
+      res.status(501).json({ error: 'not_available', message: 'Marketplace not configured' });
+      return;
+    }
+    try {
+      const fullFlow = new FullDemoFlow({
+        marketplace,
+        privacy,
+        points: points!,
+        skillRegistry,
+        registryBroker,
+        connectionHandler,
+      });
+
+      if (fullFlow.isRunning()) {
+        res.json({ status: 'running', message: 'Full demo flow is already running' });
+        return;
+      }
+
+      const result = await fullFlow.run();
+      const statusCode = result.status === 'failed' ? 500 : 200;
+      res.status(statusCode).json(result);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      res.status(500).json({ error: 'full_flow_failed', message });
+    }
   });
 
   // ==========================================
