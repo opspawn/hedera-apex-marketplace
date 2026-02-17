@@ -38,8 +38,8 @@ import { FullDemoFlow } from '../demo/full-flow';
 import { TestnetIntegration } from '../hedera/testnet-integration';
 
 // Test count managed as a constant — updated each sprint
-const TEST_COUNT = 1622;
-const VERSION = '0.27.0';
+const TEST_COUNT = 1630;
+const VERSION = '0.28.0';
 const STANDARDS = ['HCS-10', 'HCS-11', 'HCS-14', 'HCS-19', 'HCS-20', 'HCS-26'];
 
 export function createRouter(
@@ -674,6 +674,7 @@ export function createRouter(
         status: string;
         detail: string;
         data?: Record<string, unknown>;
+        hedera_proof: { mode: string; hashscan_url: string | null } | null;
         duration_ms: number;
       }> = [];
 
@@ -681,7 +682,7 @@ export function createRouter(
         stepNum: number,
         phase: string,
         title: string,
-        fn: () => Promise<{ detail: string; data?: Record<string, unknown> }>,
+        fn: () => Promise<{ detail: string; data?: Record<string, unknown>; hedera_proof?: { mode: string; hashscan_url: string | null } | null }>,
       ) => {
         const stepStart = Date.now();
         try {
@@ -691,6 +692,7 @@ export function createRouter(
             status: 'completed',
             detail: result.detail,
             data: result.data,
+            hedera_proof: result.hedera_proof ?? null,
             duration_ms: Date.now() - stepStart,
           });
         } catch (err) {
@@ -698,6 +700,7 @@ export function createRouter(
             step: stepNum, phase, title,
             status: 'failed',
             detail: err instanceof Error ? err.message : 'Unknown error',
+            hedera_proof: null,
             duration_ms: Date.now() - stepStart,
           });
         }
@@ -735,6 +738,13 @@ export function createRouter(
           onChain: tx.onChain,
         }));
 
+        // Build hedera_proof with hashscan URL for the registration transaction
+        const regTx = result.agent.hedera_transactions[0];
+        const proof = regTx ? {
+          mode: isLive ? 'live' : 'mock',
+          hashscan_url: regTx.onChain ? regTx.hashscanUrl : null,
+        } : { mode: isLive ? 'live' : 'mock', hashscan_url: null };
+
         return {
           detail: `Registered "${demoAgentName}" with HCS-19 identity${isLive ? ' (LIVE on Hedera testnet)' : ''}`,
           data: {
@@ -746,7 +756,13 @@ export function createRouter(
             inbound_topic: result.agent.inbound_topic,
             outbound_topic: result.agent.outbound_topic,
             profile_topic: result.agent.profile_topic,
+            hashscan_urls: {
+              inbound_topic: `https://hashscan.io/${network}/topic/${result.agent.inbound_topic}`,
+              outbound_topic: `https://hashscan.io/${network}/topic/${result.agent.outbound_topic}`,
+              profile_topic: `https://hashscan.io/${network}/topic/${result.agent.profile_topic}`,
+            },
           },
+          hedera_proof: proof,
         };
       });
 
@@ -765,6 +781,7 @@ export function createRouter(
               hedera_verified: a.agent.hedera_verified,
             })),
           },
+          hedera_proof: { mode: isLive ? 'live' : 'mock', hashscan_url: null },
         };
       });
 
@@ -773,6 +790,7 @@ export function createRouter(
         return {
           detail: 'HCS-10 connection established between client and agent',
           data: { protocol: 'hcs-10', status: 'active', connection_type: 'topic-based' },
+          hedera_proof: { mode: isLive ? 'live' : 'mock', hashscan_url: null },
         };
       });
 
@@ -790,6 +808,7 @@ export function createRouter(
         return {
           detail: `Task ${taskId} dispatched to ${demoAgentName}`,
           data: { task_id: taskId, status: hireResult.status, skill: 'code-analysis' },
+          hedera_proof: { mode: isLive ? 'live' : 'mock', hashscan_url: null },
         };
       });
 
@@ -798,6 +817,7 @@ export function createRouter(
         return {
           detail: `Task ${taskId} completed with 5-star rating`,
           data: { task_id: taskId, rating: 5, feedback: 'Excellent analysis — comprehensive security review' },
+          hedera_proof: { mode: isLive ? 'live' : 'mock', hashscan_url: null },
         };
       });
 
@@ -814,6 +834,7 @@ export function createRouter(
         return {
           detail: `Awarded 150 HCS-20 points to ${demoAgentName} (total: ${agentTotal})`,
           data: { agent_id: demoAgentId, points_awarded: 150, agent_total: agentTotal },
+          hedera_proof: { mode: isLive ? 'live' : 'mock', hashscan_url: null },
         };
       });
 

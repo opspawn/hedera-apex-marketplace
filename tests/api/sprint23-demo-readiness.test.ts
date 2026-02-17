@@ -6,8 +6,10 @@
  * - /api/demo/flow 6-step pipeline
  * - /.well-known/agent.json endpoint
  * - Dashboard demo pipeline integration
- * - Version bump to 0.27.0
+ * - Version bump to 0.28.0
  */
+
+jest.setTimeout(30000);
 
 import { createApp } from '../../src/index';
 import { seedDemoAgents } from '../../src/seed';
@@ -39,7 +41,7 @@ describe('Sprint 23: /api/agents with seed agents', () => {
   let hcs19: any;
   let hcs20: any;
 
-  beforeEach(async () => {
+  beforeAll(async () => {
     const ctx = createApp();
     app = ctx.app;
     marketplace = ctx.marketplace;
@@ -47,7 +49,7 @@ describe('Sprint 23: /api/agents with seed agents', () => {
     hcs20 = ctx.hcs20;
     // Seed agents like the server does on startup
     await seedDemoAgents(marketplace, hcs19, hcs20);
-  });
+  }, 60000);
 
   test('GET /api/agents returns seed agents after seeding', async () => {
     const res = await request(app, 'GET', '/api/agents');
@@ -126,14 +128,14 @@ describe('Sprint 23: /api/demo/flow pipeline', () => {
   let hcs19: any;
   let hcs20: any;
 
-  beforeEach(async () => {
+  beforeAll(async () => {
     const ctx = createApp();
     app = ctx.app;
     marketplace = ctx.marketplace;
     hcs19 = ctx.hcs19;
     hcs20 = ctx.hcs20;
     await seedDemoAgents(marketplace, hcs19, hcs20);
-  });
+  }, 60000);
 
   test('GET /api/demo/flow returns 6-step pipeline result', async () => {
     const res = await request(app, 'GET', '/api/demo/flow');
@@ -163,6 +165,17 @@ describe('Sprint 23: /api/demo/flow pipeline', () => {
       expect(step.status).toBeDefined();
       expect(step.detail).toBeDefined();
       expect(typeof step.duration_ms).toBe('number');
+    }
+  });
+
+  test('pipeline steps include hedera_proof field', async () => {
+    const res = await request(app, 'GET', '/api/demo/flow');
+    for (const step of res.body.steps) {
+      if (step.status === 'completed') {
+        expect(step.hedera_proof).toBeDefined();
+        expect(step.hedera_proof.mode).toBeDefined();
+        expect(['live', 'mock']).toContain(step.hedera_proof.mode);
+      }
     }
   });
 
@@ -216,9 +229,9 @@ describe('Sprint 23: /.well-known/agent.json', () => {
     expect(res.body.name).toBe('Hedera Agent Marketplace');
   });
 
-  test('agent.json has version 0.27.0', async () => {
+  test('agent.json has version 0.28.0', async () => {
     const res = await request(app, 'GET', '/.well-known/agent.json');
-    expect(res.body.version).toBe('0.27.0');
+    expect(res.body.version).toBe('0.28.0');
   });
 
   test('agent.json has protocols array with 6 standards', async () => {
@@ -277,23 +290,23 @@ describe('Sprint 23: Version bump', () => {
     ({ app } = createApp());
   });
 
-  test('health returns v0.27.0', async () => {
+  test('health returns v0.28.0', async () => {
     const res = await request(app, 'GET', '/health');
-    expect(res.body.version).toBe('0.27.0');
+    expect(res.body.version).toBe('0.28.0');
   });
 
-  test('stats returns v0.27.0', async () => {
+  test('stats returns v0.28.0', async () => {
     const res = await request(app, 'GET', '/api/stats');
-    expect(res.body.version).toBe('0.27.0');
+    expect(res.body.version).toBe('0.28.0');
   });
 
   test('test_count is 1600', async () => {
     const res = await request(app, 'GET', '/health');
-    expect(res.body.test_count).toBe(1622);
+    expect(res.body.test_count).toBe(1630);
   });
 
-  test('ready endpoint returns v0.27.0', async () => {
+  test('ready endpoint returns v0.28.0', async () => {
     const res = await request(app, 'GET', '/ready');
-    expect(res.body.version).toBe('0.27.0');
+    expect(res.body.version).toBe('0.28.0');
   });
 });

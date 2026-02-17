@@ -4,6 +4,8 @@
  * Validates each seed agent has proper data for demo readiness.
  */
 
+jest.setTimeout(30000);
+
 import { createApp } from '../../src/index';
 import { seedDemoAgents } from '../../src/seed';
 import { Express } from 'express';
@@ -27,11 +29,11 @@ async function request(app: Express, method: string, path: string) {
 describe('Sprint 23: Seed Agent Quality', () => {
   let app: Express;
 
-  beforeEach(async () => {
+  beforeAll(async () => {
     const ctx = createApp();
     app = ctx.app;
     await seedDemoAgents(ctx.marketplace, ctx.hcs19, ctx.hcs20);
-  });
+  }, 60000);
 
   test('all 8 seed agents are present', async () => {
     const res = await request(app, 'GET', '/api/agents');

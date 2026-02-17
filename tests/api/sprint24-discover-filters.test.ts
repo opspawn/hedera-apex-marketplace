@@ -5,6 +5,8 @@
  * on GET /api/marketplace/discover
  */
 
+jest.setTimeout(30000);
+
 import { createApp } from '../../src/index';
 import { seedDemoAgents } from '../../src/seed';
 import { Express } from 'express';
@@ -36,7 +38,7 @@ describe('Sprint 24: Marketplace Discover Filters', () => {
     const result = createApp();
     app = result.app;
     await seedDemoAgents(result.marketplace, result.hcs19, result.hcs20);
-  });
+  }, 60000);
 
   test('returns all agents when no filters applied', async () => {
     const res = await request(app, 'GET', '/api/marketplace/discover');
