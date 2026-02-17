@@ -30,3 +30,10 @@ export type {
   AgentFeedbackSummary,
   FeedbackQuery,
 } from './agent-feedback';
+
+export { RegistryAuth } from './registry-auth';
+export type {
+  LiveRegistrationConfig,
+  LiveRegistrationResult,
+  LiveVerificationResult,
+} from './registry-auth';

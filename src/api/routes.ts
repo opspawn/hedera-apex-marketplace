@@ -32,11 +32,12 @@ import { HCS20PointsTracker } from '../hcs-20/hcs20-points';
 import { DemoFlow } from '../demo/flow';
 import { RegistryBroker } from '../hol/registry-broker';
 import { ConnectionHandler } from '../hol/connection-handler';
+import { RegistryAuth } from '../hol/registry-auth';
 import { AgentRegistration, ConsentRequest, SearchQuery, SkillManifest } from '../types';
 
 // Test count managed as a constant — updated each sprint
-const TEST_COUNT = 800;
-const VERSION = '0.16.0';
+const TEST_COUNT = 1300;
+const VERSION = '0.18.0';
 const STANDARDS = ['HCS-10', 'HCS-11', 'HCS-14', 'HCS-19', 'HCS-20', 'HCS-26'];
 
 export function createRouter(
@@ -49,6 +50,7 @@ export function createRouter(
   demoFlow?: DemoFlow,
   registryBroker?: RegistryBroker,
   connectionHandler?: ConnectionHandler,
+  registryAuth?: RegistryAuth,
 ): Router {
   const router = Router();
   const appStartTime = startTime || Date.now();
@@ -602,6 +604,37 @@ export function createRouter(
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Unknown error';
       res.status(500).json({ error: 'verification_failed', message });
+    }
+  });
+
+  // POST /api/registry/register-live — Trigger live HOL Registry Broker registration
+  router.post('/api/registry/register-live', async (_req: Request, res: Response) => {
+    if (!registryAuth) {
+      res.status(501).json({ error: 'not_available', message: 'Registry Auth not configured' });
+      return;
+    }
+    try {
+      const result = await registryAuth.registerLive();
+      const statusCode = result.success ? 201 : 500;
+      res.status(statusCode).json(result);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      res.status(500).json({ error: 'live_registration_failed', message });
+    }
+  });
+
+  // GET /api/registry/verify-live — Verify live registration in broker index
+  router.get('/api/registry/verify-live', async (_req: Request, res: Response) => {
+    if (!registryAuth) {
+      res.status(501).json({ error: 'not_available', message: 'Registry Auth not configured' });
+      return;
+    }
+    try {
+      const result = await registryAuth.verifyLive();
+      res.json(result);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      res.status(500).json({ error: 'live_verification_failed', message });
     }
   });
 

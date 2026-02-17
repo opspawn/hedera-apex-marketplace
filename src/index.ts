@@ -25,6 +25,7 @@ import { DemoFlow } from './demo/flow';
 import { TestnetIntegration } from './hedera/testnet-integration';
 import { RegistryBroker } from './hol/registry-broker';
 import { ConnectionHandler } from './hol/connection-handler';
+import { RegistryAuth } from './hol/registry-auth';
 import { createChatRouter } from './chat';
 
 const START_TIME = Date.now();
@@ -107,17 +108,29 @@ export function createApp() {
     accountId: config.hedera.accountId,
   }, hcs10);
 
+  // Initialize live registry auth
+  const registryAuth = new RegistryAuth({
+    accountId: config.hedera.accountId,
+    privateKey: config.hedera.privateKey,
+    network: config.hedera.network,
+  });
+
   // Create Express app
   const app = express();
   app.use(cors());
   app.use(express.json());
 
   // Mount routes
-  app.use(createRouter(registry, hcs19, hcs26, marketplace, hcs20, START_TIME, demoFlow, registryBroker, connectionHandler));
-  app.use(createChatRouter());
+  app.use(createRouter(registry, hcs19, hcs26, marketplace, hcs20, START_TIME, demoFlow, registryBroker, connectionHandler, registryAuth));
+  app.use(createChatRouter({
+    chatAgentConfig: {
+      registryBroker,
+      connectionHandler,
+    },
+  }));
   app.use(createDashboardRouter());
 
-  return { app, config, registry, marketplace, hcs10, hcs11, hcs14, hcs19, hcs19Identity, hcs26, hcs20, demoFlow, testnetIntegration, registryBroker, connectionHandler };
+  return { app, config, registry, marketplace, hcs10, hcs11, hcs14, hcs19, hcs19Identity, hcs26, hcs20, demoFlow, testnetIntegration, registryBroker, connectionHandler, registryAuth };
 }
 
 /**

@@ -7,6 +7,7 @@
 
 import { Router, Request, Response } from 'express';
 import { v4 as uuid } from 'uuid';
+import { ChatAgent, ChatAgentConfig, AgentChatResponse } from './agent-chat';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -110,7 +111,21 @@ async function getAgent(): Promise<any> {
 // Router
 // ---------------------------------------------------------------------------
 
-export function createChatRouter(): Router {
+export interface ChatRouterOptions {
+  chatAgentConfig?: ChatAgentConfig;
+}
+
+let chatAgentInstance: ChatAgent | null = null;
+
+function getChatAgent(options?: ChatRouterOptions): ChatAgent | null {
+  if (chatAgentInstance) return chatAgentInstance;
+  if (options?.chatAgentConfig) {
+    chatAgentInstance = new ChatAgent(options.chatAgentConfig);
+  }
+  return chatAgentInstance;
+}
+
+export function createChatRouter(options?: ChatRouterOptions): Router {
   const router = Router();
 
   // --- Serve chat UI -------------------------------------------------
@@ -222,13 +237,66 @@ export function createChatRouter(): Router {
   // --- Chat status (API key check) -----------------------------------
   router.get('/api/chat/status', (_req: Request, res: Response) => {
     const keyConfig = getApiKeyConfig();
+    const agent = getChatAgent(options);
     res.json({
       configured: !!keyConfig,
       provider: keyConfig?.provider ?? null,
       hederaConfigured: !!(process.env.HEDERA_ACCOUNT_ID && process.env.HEDERA_PRIVATE_KEY),
       agentReady: !!agentInstance,
+      chatAgentReady: !!agent,
       error: agentError,
     });
+  });
+
+  // --- POST /api/chat/agent — Natural language chat agent endpoint ---
+  // Uses our lightweight ChatAgent with tool calling (no external LLM needed)
+  router.post('/api/chat/agent', async (req: Request, res: Response) => {
+    const { message, sessionId } = req.body as { message?: string; sessionId?: string };
+
+    if (!message || typeof message !== 'string' || !message.trim()) {
+      res.status(400).json({ error: 'Message is required' });
+      return;
+    }
+
+    const agent = getChatAgent(options);
+    if (!agent) {
+      res.status(503).json({
+        error: 'Chat agent not configured',
+        message: 'The natural language chat agent requires RegistryBroker and ConnectionHandler to be initialized.',
+      });
+      return;
+    }
+
+    try {
+      const sid = sessionId || uuid();
+      const result: AgentChatResponse = await agent.processMessage(message.trim(), sid);
+      res.json(result);
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : 'Unknown error';
+      res.status(500).json({ error: 'chat_agent_failed', message: errMsg });
+    }
+  });
+
+  // --- GET /api/chat/agent/tools — List available chat agent tools ---
+  router.get('/api/chat/agent/tools', (_req: Request, res: Response) => {
+    const agent = getChatAgent(options);
+    if (!agent) {
+      res.json({ tools: [], available: false });
+      return;
+    }
+    res.json({ tools: agent.getAvailableTools(), available: true });
+  });
+
+  // --- GET /api/chat/agent/history/:sessionId — Chat agent history ---
+  router.get('/api/chat/agent/history/:sessionId', (req: Request, res: Response) => {
+    const agent = getChatAgent(options);
+    if (!agent) {
+      res.status(503).json({ error: 'Chat agent not configured' });
+      return;
+    }
+    const sid = String(req.params.sessionId);
+    const history = agent.getHistory(sid);
+    res.json({ sessionId: sid, messages: history });
   });
 
   return router;
@@ -377,24 +445,24 @@ function getChatHTML(): string {
   <div class="chat-container" id="chatContainer">
     <div class="welcome" id="welcome">
       <div class="welcome-icon">&#x1F916;</div>
-      <h2>Hedera Conversational Agent</h2>
-      <p>Chat with an AI agent that can interact with the Hedera network &mdash; manage tokens, send HBAR, inscribe content, and more using natural language.</p>
+      <h2>Hedera Agent Marketplace Chat</h2>
+      <p>Chat with the marketplace agent using natural language &mdash; register agents, discover capabilities, connect via HCS-10, and exchange messages.</p>
       <div class="suggestions" id="suggestions">
         <div class="suggestion" onclick="sendSuggestion(this)">
-          <div class="suggestion-label">Get started</div>
-          What can you do on the Hedera network?
+          <div class="suggestion-label">Register</div>
+          Register me as a data analyst agent
         </div>
         <div class="suggestion" onclick="sendSuggestion(this)">
-          <div class="suggestion-label">Account info</div>
-          Check my account balance
+          <div class="suggestion-label">Discover</div>
+          Find agents that can analyze financial data
         </div>
         <div class="suggestion" onclick="sendSuggestion(this)">
-          <div class="suggestion-label">Token ops</div>
-          How do I create a new fungible token?
+          <div class="suggestion-label">Connect</div>
+          Connect to agent 0.0.12345
         </div>
         <div class="suggestion" onclick="sendSuggestion(this)">
-          <div class="suggestion-label">Inscriptions</div>
-          Inscribe a message on the Hedera network
+          <div class="suggestion-label">Messages</div>
+          Check my messages
         </div>
       </div>
     </div>
@@ -427,18 +495,15 @@ function getChatHTML(): string {
         .then(function(data) {
           var dot = document.getElementById('statusDot');
           var text = document.getElementById('statusText');
-          if (!data.configured) {
-            dot.className = 'status-dot warn';
-            text.innerHTML = 'API key not configured &mdash; agent will show setup instructions';
-          } else if (data.agentReady) {
+          if (data.chatAgentReady) {
             dot.className = 'status-dot ok';
-            text.innerHTML = 'Agent ready &mdash; <strong>' + data.provider + '</strong> provider' + (data.hederaConfigured ? ', Hedera connected' : '');
+            text.innerHTML = 'Marketplace chat agent ready &mdash; natural language tools active' + (data.hederaConfigured ? ', Hedera connected' : '');
           } else if (data.error) {
             dot.className = 'status-dot error';
             text.innerHTML = 'Agent error: ' + escapeHtml(data.error);
           } else {
-            dot.className = 'status-dot ok';
-            text.innerHTML = '<strong>' + data.provider + '</strong> configured &mdash; agent will initialize on first message';
+            dot.className = 'status-dot warn';
+            text.innerHTML = 'Chat agent initializing...';
           }
         })
         .catch(function() {
@@ -467,13 +532,13 @@ function getChatHTML(): string {
     function getWelcomeHTML() {
       return '<div class="welcome" id="welcome">' +
         '<div class="welcome-icon">&#x1F916;</div>' +
-        '<h2>Hedera Conversational Agent</h2>' +
-        '<p>Chat with an AI agent that can interact with the Hedera network &mdash; manage tokens, send HBAR, inscribe content, and more using natural language.</p>' +
+        '<h2>Hedera Agent Marketplace Chat</h2>' +
+        '<p>Chat with the marketplace agent using natural language &mdash; register agents, discover capabilities, connect via HCS-10, and exchange messages.</p>' +
         '<div class="suggestions" id="suggestions">' +
-          '<div class="suggestion" onclick="sendSuggestion(this)"><div class="suggestion-label">Get started</div>What can you do on the Hedera network?</div>' +
-          '<div class="suggestion" onclick="sendSuggestion(this)"><div class="suggestion-label">Account info</div>Check my account balance</div>' +
-          '<div class="suggestion" onclick="sendSuggestion(this)"><div class="suggestion-label">Token ops</div>How do I create a new fungible token?</div>' +
-          '<div class="suggestion" onclick="sendSuggestion(this)"><div class="suggestion-label">Inscriptions</div>Inscribe a message on the Hedera network</div>' +
+          '<div class="suggestion" onclick="sendSuggestion(this)"><div class="suggestion-label">Register</div>Register me as a data analyst agent</div>' +
+          '<div class="suggestion" onclick="sendSuggestion(this)"><div class="suggestion-label">Discover</div>Find agents that can analyze financial data</div>' +
+          '<div class="suggestion" onclick="sendSuggestion(this)"><div class="suggestion-label">Connect</div>Connect to agent 0.0.12345</div>' +
+          '<div class="suggestion" onclick="sendSuggestion(this)"><div class="suggestion-label">Messages</div>Check my messages</div>' +
         '</div></div>';
     }
 
@@ -508,7 +573,7 @@ function getChatHTML(): string {
       // Show typing indicator
       var typingId = showTyping();
 
-      fetch('/api/chat/message', {
+      fetch('/api/chat/agent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionId: sessionId, message: message }),
@@ -517,8 +582,11 @@ function getChatHTML(): string {
         .then(function(data) {
           removeTyping(typingId);
           if (data.sessionId) sessionId = data.sessionId;
-          if (data.agentMessage) {
-            addMessage('agent', data.agentMessage.content, data.agentMessage.toolCalls, data.agentMessage.error);
+          if (data.response) {
+            var toolCalls = data.actions ? data.actions.map(function(a) { return { name: a.tool, args: a.args, output: a.result ? a.result.message : '' }; }) : null;
+            addMessage('agent', data.response, toolCalls);
+          } else if (data.error) {
+            addMessage('agent', data.message || data.error, null, data.error);
           }
         })
         .catch(function(err) {
