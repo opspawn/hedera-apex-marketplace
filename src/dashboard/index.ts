@@ -630,10 +630,36 @@ function getDashboardHTML(): string {
     <!-- Live Demo View -->
     <div class="view" id="view-demo" role="tabpanel" aria-labelledby="tab-demo">
       <div style="max-width:800px;">
-        <h2 style="color:#fff; margin-bottom:0.5rem;">Live Demo Flow</h2>
-        <p style="color:#6a7a9a; margin-bottom:1.5rem; font-size:0.9rem;">Watch the marketplace in action: seed agents, search, hire, complete tasks, and award reputation points — all using Hedera HCS standards.</p>
-        <button class="btn btn-primary" id="demo-run-btn" onclick="runLiveDemo()" aria-label="Run live demo" style="width:100%; padding:1rem; font-size:1rem; background:linear-gradient(135deg, #00c853, #00a040);">
-          Run Live Demo
+        <h2 style="color:#fff; margin-bottom:0.5rem;">Interactive Demo Pipeline</h2>
+        <p style="color:#6a7a9a; margin-bottom:1rem; font-size:0.9rem;">Experience the complete 6-step marketplace pipeline: register an agent, discover agents, connect via HCS-10, send a task, get feedback, and award HCS-20 reputation points.</p>
+        <div style="display:grid; grid-template-columns:repeat(6,1fr); gap:0.5rem; margin-bottom:1.5rem;">
+          <div class="demo-phase-indicator" id="demo-phase-1" style="text-align:center; padding:0.5rem 0.25rem; border-radius:6px; background:#1a1f35; border:1px solid #1e2a4a;">
+            <div style="font-size:0.65rem; color:#6a7a9a; text-transform:uppercase;">Step 1</div>
+            <div style="font-size:0.7rem; color:#fff; margin-top:0.15rem;">Register</div>
+          </div>
+          <div class="demo-phase-indicator" id="demo-phase-2" style="text-align:center; padding:0.5rem 0.25rem; border-radius:6px; background:#1a1f35; border:1px solid #1e2a4a;">
+            <div style="font-size:0.65rem; color:#6a7a9a; text-transform:uppercase;">Step 2</div>
+            <div style="font-size:0.7rem; color:#fff; margin-top:0.15rem;">Discover</div>
+          </div>
+          <div class="demo-phase-indicator" id="demo-phase-3" style="text-align:center; padding:0.5rem 0.25rem; border-radius:6px; background:#1a1f35; border:1px solid #1e2a4a;">
+            <div style="font-size:0.65rem; color:#6a7a9a; text-transform:uppercase;">Step 3</div>
+            <div style="font-size:0.7rem; color:#fff; margin-top:0.15rem;">Connect</div>
+          </div>
+          <div class="demo-phase-indicator" id="demo-phase-4" style="text-align:center; padding:0.5rem 0.25rem; border-radius:6px; background:#1a1f35; border:1px solid #1e2a4a;">
+            <div style="font-size:0.65rem; color:#6a7a9a; text-transform:uppercase;">Step 4</div>
+            <div style="font-size:0.7rem; color:#fff; margin-top:0.15rem;">Task</div>
+          </div>
+          <div class="demo-phase-indicator" id="demo-phase-5" style="text-align:center; padding:0.5rem 0.25rem; border-radius:6px; background:#1a1f35; border:1px solid #1e2a4a;">
+            <div style="font-size:0.65rem; color:#6a7a9a; text-transform:uppercase;">Step 5</div>
+            <div style="font-size:0.7rem; color:#fff; margin-top:0.15rem;">Feedback</div>
+          </div>
+          <div class="demo-phase-indicator" id="demo-phase-6" style="text-align:center; padding:0.5rem 0.25rem; border-radius:6px; background:#1a1f35; border:1px solid #1e2a4a;">
+            <div style="font-size:0.65rem; color:#6a7a9a; text-transform:uppercase;">Step 6</div>
+            <div style="font-size:0.7rem; color:#fff; margin-top:0.15rem;">Points</div>
+          </div>
+        </div>
+        <button class="btn btn-primary" id="demo-run-btn" onclick="runDemoPipeline()" aria-label="Run demo pipeline" style="width:100%; padding:1rem; font-size:1rem; background:linear-gradient(135deg, #00c853, #00a040);">
+          Run Demo Pipeline
         </button>
         <div id="demo-status" style="margin-top:1rem; padding:0.75rem; border-radius:8px; background:#111827; border:1px solid #1e2a4a; display:none;" aria-live="polite">
           <div style="color:#00d4ff; font-weight:600;" id="demo-status-text">Running demo...</div>
@@ -1226,7 +1252,7 @@ function getDashboardHTML(): string {
       }
     }
 
-    async function runLiveDemo() {
+    async function runDemoPipeline() {
       if (demoRunning) return;
       demoRunning = true;
       const btn = document.getElementById('demo-run-btn');
@@ -1235,36 +1261,88 @@ function getDashboardHTML(): string {
       const stepsDiv = document.getElementById('demo-steps');
       const summaryDiv = document.getElementById('demo-summary');
       btn.disabled = true;
-      btn.textContent = 'Demo Running...';
+      btn.textContent = 'Pipeline Running...';
       btn.style.opacity = '0.6';
       statusDiv.style.display = 'block';
-      statusText.textContent = 'Starting demo flow...';
+      statusText.textContent = 'Running 6-step demo pipeline...';
       stepsDiv.innerHTML = '';
       summaryDiv.style.display = 'none';
 
+      // Reset phase indicators
+      for (var i = 1; i <= 6; i++) {
+        var phase = document.getElementById('demo-phase-' + i);
+        if (phase) { phase.style.background = '#1a1f35'; phase.style.borderColor = '#1e2a4a'; }
+      }
+
       try {
-        const res = await fetch('/api/demo/run', { method: 'POST' });
+        const res = await fetch('/api/demo/flow');
         const data = await res.json();
 
-        if (data.status === 'completed' || data.status === 'running') {
-          // Poll for status updates
-          await pollDemoStatus(stepsDiv, statusText, summaryDiv);
-        } else if (data.error) {
-          statusText.textContent = 'Demo failed: ' + data.error;
+        if (data.steps) {
+          const phaseIcons = { registration: '&#x1F4DD;', discovery: '&#x1F50D;', connection: '&#x1F517;', execution: '&#x1F4BC;', feedback: '&#x2B50;', points: '&#x1F3C6;' };
+          stepsDiv.innerHTML = data.steps.map(function(s) {
+            var statusColor = s.status === 'completed' ? '#00c853' : '#ff4444';
+            var statusIcon = s.status === 'completed' ? '&#x2705;' : '&#x274C;';
+            // Light up phase indicator
+            var phaseEl = document.getElementById('demo-phase-' + s.step);
+            if (phaseEl) {
+              phaseEl.style.background = s.status === 'completed' ? 'rgba(0,200,83,0.15)' : 'rgba(255,68,68,0.15)';
+              phaseEl.style.borderColor = s.status === 'completed' ? '#00c853' : '#ff4444';
+            }
+            return '<div class="feed-item" style="margin-bottom:0.5rem;">' +
+              '<div class="feed-icon" style="background:rgba(0,212,255,0.15); color:#00d4ff;">' + (phaseIcons[s.phase] || '&#x1F4AC;') + '</div>' +
+              '<div class="feed-content">' +
+              '<div class="feed-title"><strong>Step ' + s.step + ': ' + esc(s.title) + '</strong> <span style="color:' + statusColor + '; font-size:0.75rem;">' + statusIcon + ' ' + s.status + '</span></div>' +
+              '<div style="color:#8892b0; font-size:0.8rem;">' + esc(s.detail) + '</div>' +
+              '<div style="color:#3a4a6a; font-size:0.7rem; margin-top:0.15rem;">' + s.duration_ms + 'ms</div>' +
+              '</div></div>';
+          }).join('');
+
+          // Add to activity feed
+          for (var j = 0; j < data.steps.length; j++) {
+            var s = data.steps[j];
+            addActivity('skill', 'Pipeline: ' + s.title, s.detail);
+          }
+        }
+
+        if (data.status === 'completed') {
+          statusText.textContent = 'Pipeline completed successfully! All 6 steps passed.';
+          statusText.style.color = '#00c853';
+        } else if (data.status === 'partial') {
+          statusText.textContent = 'Pipeline partially completed (' + (data.summary ? data.summary.completed_steps : '?') + '/' + (data.summary ? data.summary.total_steps : '?') + ' steps).';
+          statusText.style.color = '#f59e0b';
+        } else {
+          statusText.textContent = 'Pipeline failed.';
           statusText.style.color = '#ff4444';
         }
+
+        if (data.summary) {
+          summaryDiv.style.display = 'block';
+          summaryDiv.innerHTML =
+            '<div style="background:#111827; padding:1.25rem; border-radius:12px; border:1px solid #1e2a4a;">' +
+            '<h3 style="color:#00d4ff; font-size:0.85rem; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:0.75rem;">Pipeline Summary</h3>' +
+            '<div class="modal-field"><span class="label">Status</span><span class="value" style="color:' + (data.status === 'completed' ? '#00c853' : '#f59e0b') + ';">' + data.status + '</span></div>' +
+            '<div class="modal-field"><span class="label">Steps Completed</span><span class="value">' + data.summary.completed_steps + '/' + data.summary.total_steps + '</span></div>' +
+            '<div class="modal-field"><span class="label">Agent Registered</span><span class="value" style="color:#00d4ff;">' + esc(data.summary.agent_registered || 'N/A') + '</span></div>' +
+            '<div class="modal-field"><span class="label">Agents Discovered</span><span class="value">' + data.summary.agents_discovered + '</span></div>' +
+            '<div class="modal-field"><span class="label">Duration</span><span class="value">' + data.total_duration_ms + 'ms</span></div>' +
+            '</div>';
+        }
       } catch(e) {
-        statusText.textContent = 'Failed to start demo';
+        statusText.textContent = 'Failed to run pipeline: ' + e.message;
         statusText.style.color = '#ff4444';
       }
 
       btn.disabled = false;
-      btn.textContent = 'Run Live Demo';
+      btn.textContent = 'Run Demo Pipeline';
       btn.style.opacity = '1';
       demoRunning = false;
       // Refresh marketplace data
       searchMarketplace();
     }
+
+    // Legacy alias
+    async function runLiveDemo() { return runDemoPipeline(); }
 
     async function pollDemoStatus(stepsDiv, statusText, summaryDiv) {
       let attempts = 0;
@@ -2092,7 +2170,7 @@ function getDemoFlowHTML(): string {
   <div class="header">
     <div style="display: flex; align-items: center; gap: 12px;">
       <h1>Hedera Agent Marketplace</h1>
-      <span class="badge">v0.22.0</span>
+      <span class="badge">v0.23.0</span>
     </div>
     <nav>
       <a href="/">Dashboard</a>

@@ -170,6 +170,6 @@ describe('Demo Flow Dashboard', () => {
     expect(res.body).toContain('End-to-End Demo Flow');
     expect(res.body).toContain('Run Full Demo');
     expect(res.body).toContain('/api/demo/full-flow');
-    expect(res.body).toContain('v0.22.0');
+    expect(res.body).toContain('v0.23.0');
   });
 });

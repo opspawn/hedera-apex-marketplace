@@ -69,12 +69,12 @@ describe('Demo API Routes', () => {
     it('should return version 0.14.0', async () => {
       const res = await request(app, 'GET', '/health');
       expect(res.status).toBe(200);
-      expect(res.body.version).toBe('0.22.0');
+      expect(res.body.version).toBe('0.23.0');
     });
 
     it('should report test count 521', async () => {
       const res = await request(app, 'GET', '/health');
-      expect(res.body.test_count).toBe(1455);
+      expect(res.body.test_count).toBe(1500);
     });
   });
 });
