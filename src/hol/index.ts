@@ -18,6 +18,9 @@ export type {
   VectorSearchResult,
   BrokerSkillEntry,
   SkillsListResult,
+  ChatRelaySession,
+  ChatRelayMessage,
+  ChatRelayResponse,
 } from './registry-broker';
 
 export { ConnectionHandler } from './connection-handler';

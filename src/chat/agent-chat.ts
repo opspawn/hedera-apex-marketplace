@@ -17,7 +17,7 @@
  *  - GetFeedbackTool: Retrieve agent feedback/ratings
  */
 
-import { RegistryBroker, BrokerAgentEntry } from '../hol/registry-broker';
+import { RegistryBroker, BrokerAgentEntry, ChatRelaySession } from '../hol/registry-broker';
 import { ConnectionHandler, ActiveConnection, ConnectionMessage } from '../hol/connection-handler';
 import { AgentFeedbackManager } from '../hol/agent-feedback';
 
@@ -96,6 +96,47 @@ function detectIntent(message: string): DetectedIntent {
     return {
       tool: 'initiate_connection',
       args: { targetAccount: accountMatch ? accountMatch[1] : '' },
+      confidence: 0.85,
+    };
+  }
+
+  // Chat relay: start session with an agent (must be before send_message)
+  if (
+    /\b(chat|talk|converse|start (?:a )?(?:chat|conversation|session))\b.*\b(with|to)\b/.test(lower) ||
+    /\bopen\b.*\b(session|chat)\b.*\b(with|to)\b/.test(lower)
+  ) {
+    const agentMatch = lower.match(/(?:with|to)\s+([\w.-]+)/);
+    return {
+      tool: 'create_chat_session',
+      args: { agentId: agentMatch ? agentMatch[1] : '' },
+      confidence: 0.9,
+    };
+  }
+
+  // Chat relay: send message in relay session (must be before send_message)
+  if (
+    /\b(relay|forward)\b.*\b(message|to)\b/.test(lower) ||
+    /\bin (?:the |my )?(?:chat |relay )?session\b/.test(lower)
+  ) {
+    const contentMatch = message.match(/(?:["'](.+?)["']|:\s*(.+?)$)/);
+    return {
+      tool: 'relay_message',
+      args: {
+        content: contentMatch ? (contentMatch[1] || contentMatch[2] || message) : message,
+      },
+      confidence: 0.85,
+    };
+  }
+
+  // Chat relay: get relay history (must be before check_messages)
+  if (
+    /\brelay\b.*\b(history|transcript|log)\b/.test(lower) ||
+    /\bsession\b.*\b(history|messages)\b/.test(lower) ||
+    /\bchat\b.*\b(history|transcript)\b/.test(lower)
+  ) {
+    return {
+      tool: 'get_relay_history',
+      args: {},
       confidence: 0.85,
     };
   }
@@ -276,6 +317,24 @@ export class ChatAgent {
           response = result.message;
           break;
         }
+        case 'create_chat_session': {
+          const result = await this.executeCreateChatSession(intent.args);
+          actions.push({ tool: 'create_chat_session', args: intent.args, result });
+          response = result.message;
+          break;
+        }
+        case 'relay_message': {
+          const result = await this.executeRelayMessage(intent.args);
+          actions.push({ tool: 'relay_message', args: intent.args, result });
+          response = result.message;
+          break;
+        }
+        case 'get_relay_history': {
+          const result = await this.executeGetRelayHistory();
+          actions.push({ tool: 'get_relay_history', args: {}, result });
+          response = result.message;
+          break;
+        }
         default: {
           response = this.getHelpResponse();
           break;
@@ -325,6 +384,9 @@ export class ChatAgent {
       'send_message',
       'check_messages',
       'get_feedback',
+      'create_chat_session',
+      'relay_message',
+      'get_relay_history',
     ];
   }
 
@@ -539,6 +601,80 @@ export class ChatAgent {
     };
   }
 
+  private async executeCreateChatSession(args: Record<string, unknown>): Promise<ToolResult> {
+    const agentId = String(args.agentId || '');
+    if (!agentId) {
+      return {
+        success: false,
+        message: 'Please specify an agent ID to start a chat session with (e.g., "Chat with agent 0.0.12345").',
+      };
+    }
+
+    const session = await this.broker.createSession(agentId);
+    return {
+      success: true,
+      data: session,
+      message: `Chat session created with agent ${agentId}! Session ID: ${session.sessionId}. You can now relay messages to this agent.`,
+    };
+  }
+
+  private async executeRelayMessage(args: Record<string, unknown>): Promise<ToolResult> {
+    const content = String(args.content || '');
+    if (!content) {
+      return { success: false, message: 'Please provide a message to relay.' };
+    }
+
+    const activeSessions = this.broker.getActiveRelaySessions();
+    if (activeSessions.length === 0) {
+      return {
+        success: false,
+        message: 'No active chat relay sessions. Start one first with "Chat with agent [id]".',
+      };
+    }
+
+    // Send to most recent active session
+    const session = activeSessions[activeSessions.length - 1];
+    const response = await this.broker.sendRelayMessage(session.sessionId, content);
+    const agentReply = response.agentResponse
+      ? response.agentResponse.content
+      : 'Message sent (awaiting response)';
+    return {
+      success: true,
+      data: response,
+      message: `Message relayed to agent ${session.agentId}. Response: ${agentReply}`,
+    };
+  }
+
+  private async executeGetRelayHistory(): Promise<ToolResult> {
+    const activeSessions = this.broker.getActiveRelaySessions();
+    if (activeSessions.length === 0) {
+      return {
+        success: true,
+        data: { sessions: [], messages: [] },
+        message: 'No active chat relay sessions.',
+      };
+    }
+
+    const session = activeSessions[activeSessions.length - 1];
+    const history = this.broker.getRelayHistory(session.sessionId);
+    if (history.length === 0) {
+      return {
+        success: true,
+        data: { sessionId: session.sessionId, messages: [] },
+        message: `Chat session ${session.sessionId} has no messages yet.`,
+      };
+    }
+
+    const msgList = history
+      .map((m, i) => `${i + 1}. [${m.role}] ${m.content} (${m.timestamp})`)
+      .join('\n');
+    return {
+      success: true,
+      data: { sessionId: session.sessionId, messages: history },
+      message: `Chat relay history (${history.length} messages):\n${msgList}`,
+    };
+  }
+
   private getHelpResponse(): string {
     return `I'm the Hedera Agent Marketplace assistant. Here's what I can help you with:
 
@@ -559,6 +695,12 @@ export class ChatAgent {
 **Connections (HCS-10)**
 - "Connect to agent 0.0.12345"
 - "Initiate connection with the analyst"
+
+**Chat Relay (Registry Broker)**
+- "Chat with agent 0.0.12345"
+- "Start a conversation with the analyst"
+- "Relay message: hello, can you help?"
+- "Show chat relay history"
 
 **Messaging**
 - "Send a message to the analyst: review this dataset"

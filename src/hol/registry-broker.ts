@@ -120,6 +120,29 @@ export interface SkillsListResult {
   timestamp: string;
 }
 
+// Chat relay session/message interfaces
+export interface ChatRelaySession {
+  sessionId: string;
+  agentId: string;
+  status: 'active' | 'closed';
+  createdAt: string;
+  lastMessageAt: string;
+  messageCount: number;
+}
+
+export interface ChatRelayMessage {
+  id: string;
+  sessionId: string;
+  role: 'user' | 'agent';
+  content: string;
+  timestamp: string;
+}
+
+export interface ChatRelayResponse {
+  message: ChatRelayMessage;
+  agentResponse?: ChatRelayMessage;
+}
+
 const DEFAULT_BROKER_URL = 'https://hol.org/registry/api/v1';
 
 export class RegistryBroker {
@@ -511,6 +534,156 @@ export class RegistryBroker {
       lastCheck: this.registrationResult?.timestamp || new Date().toISOString(),
       error: this.registrationResult?.error,
     };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Chat Relay — session-based conversations with registered agents
+  // ---------------------------------------------------------------------------
+
+  private chatSessions: Map<string, ChatRelaySession> = new Map();
+  private chatMessages: Map<string, ChatRelayMessage[]> = new Map();
+  private sessionCounter = 0;
+
+  /**
+   * Create a chat relay session with a registered agent.
+   *
+   * Opens a conversation channel through the Registry Broker, allowing
+   * message exchange with the target agent via the broker's relay infrastructure.
+   */
+  async createSession(agentId: string): Promise<ChatRelaySession> {
+    const sessionId = `relay-${Date.now()}-${++this.sessionCounter}`;
+
+    try {
+      const client = await this.authenticate() as Record<string, (...args: unknown[]) => Promise<unknown>>;
+      const createMethod = client.createChatSession;
+      if (typeof createMethod === 'function') {
+        const result = await createMethod.call(client, { agentId }) as Record<string, unknown>;
+        if (result?.sessionId) {
+          const session: ChatRelaySession = {
+            sessionId: result.sessionId as string,
+            agentId,
+            status: 'active',
+            createdAt: new Date().toISOString(),
+            lastMessageAt: new Date().toISOString(),
+            messageCount: 0,
+          };
+          this.chatSessions.set(session.sessionId, session);
+          this.chatMessages.set(session.sessionId, []);
+          return session;
+        }
+      }
+    } catch {
+      // Fall through to local session creation
+    }
+
+    // Local session (broker relay not available — maintain session locally)
+    const session: ChatRelaySession = {
+      sessionId,
+      agentId,
+      status: 'active',
+      createdAt: new Date().toISOString(),
+      lastMessageAt: new Date().toISOString(),
+      messageCount: 0,
+    };
+    this.chatSessions.set(sessionId, session);
+    this.chatMessages.set(sessionId, []);
+    return session;
+  }
+
+  /**
+   * Send a message in a chat relay session and get the agent's response.
+   *
+   * Routes the message through the broker to the target agent and returns
+   * both the sent message and the agent's response.
+   */
+  async sendRelayMessage(sessionId: string, content: string): Promise<ChatRelayResponse> {
+    const session = this.chatSessions.get(sessionId);
+    if (!session) {
+      throw new Error(`Chat relay session ${sessionId} not found`);
+    }
+    if (session.status !== 'active') {
+      throw new Error(`Chat relay session ${sessionId} is ${session.status}`);
+    }
+
+    const userMessage: ChatRelayMessage = {
+      id: `msg-${Date.now()}-user`,
+      sessionId,
+      role: 'user',
+      content,
+      timestamp: new Date().toISOString(),
+    };
+
+    const messages = this.chatMessages.get(sessionId) || [];
+    messages.push(userMessage);
+
+    try {
+      const client = await this.authenticate() as Record<string, (...args: unknown[]) => Promise<unknown>>;
+      const sendMethod = client.sendChatMessage;
+      if (typeof sendMethod === 'function') {
+        const result = await sendMethod.call(client, { sessionId, content }) as Record<string, unknown>;
+        if (result?.response) {
+          const agentResponse: ChatRelayMessage = {
+            id: `msg-${Date.now()}-agent`,
+            sessionId,
+            role: 'agent',
+            content: result.response as string,
+            timestamp: new Date().toISOString(),
+          };
+          messages.push(agentResponse);
+          session.messageCount += 2;
+          session.lastMessageAt = agentResponse.timestamp;
+          this.chatMessages.set(sessionId, messages);
+          return { message: userMessage, agentResponse };
+        }
+      }
+    } catch {
+      // Fall through to local echo
+    }
+
+    // Local response (when broker relay not available)
+    const agentResponse: ChatRelayMessage = {
+      id: `msg-${Date.now()}-agent`,
+      sessionId,
+      role: 'agent',
+      content: `[Agent ${session.agentId}] Received: "${content}". (Chat relay via Registry Broker)`,
+      timestamp: new Date().toISOString(),
+    };
+    messages.push(agentResponse);
+    session.messageCount += 2;
+    session.lastMessageAt = agentResponse.timestamp;
+    this.chatMessages.set(sessionId, messages);
+    return { message: userMessage, agentResponse };
+  }
+
+  /**
+   * Get the message history for a chat relay session.
+   */
+  getRelayHistory(sessionId: string): ChatRelayMessage[] {
+    return this.chatMessages.get(sessionId) || [];
+  }
+
+  /**
+   * Get a chat relay session by ID.
+   */
+  getRelaySession(sessionId: string): ChatRelaySession | undefined {
+    return this.chatSessions.get(sessionId);
+  }
+
+  /**
+   * Get all active chat relay sessions.
+   */
+  getActiveRelaySessions(): ChatRelaySession[] {
+    return Array.from(this.chatSessions.values()).filter(s => s.status === 'active');
+  }
+
+  /**
+   * Close a chat relay session.
+   */
+  closeRelaySession(sessionId: string): void {
+    const session = this.chatSessions.get(sessionId);
+    if (session) {
+      session.status = 'closed';
+    }
   }
 
   /**

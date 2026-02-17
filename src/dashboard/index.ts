@@ -393,6 +393,7 @@ function getDashboardHTML(): string {
     <div class="nav-tab" data-view="activity" role="tab" tabindex="0" aria-selected="false" aria-controls="view-activity">Activity Feed</div>
     <div class="nav-tab" data-view="register" role="tab" tabindex="0" aria-selected="false" aria-controls="view-register">Register Agent</div>
     <div class="nav-tab" data-view="hol-status" role="tab" tabindex="0" aria-selected="false" aria-controls="view-hol-status" style="color:#a855f7;">HOL Registry</div>
+    <div class="nav-tab" data-view="connections" role="tab" tabindex="0" aria-selected="false" aria-controls="view-connections" style="color:#f59e0b;">Connections</div>
     <div class="nav-tab" data-view="demo" role="tab" tabindex="0" aria-selected="false" aria-controls="view-demo" style="color:#00c853;">Live Demo</div>
     <a href="/chat" class="nav-tab" style="color:#00d4ff; text-decoration:none;" title="Chat with Hedera Agent">&#x1F4AC; Agent Chat</a>
   </nav>
@@ -580,6 +581,46 @@ function getDashboardHTML(): string {
         <div id="register-result" aria-live="polite"></div>
       </div>
     </div>
+    <!-- Connections View -->
+    <div class="view" id="view-connections" role="tabpanel" aria-labelledby="tab-connections">
+      <div style="max-width:900px;">
+        <h2 style="color:#fff; margin-bottom:0.5rem;">Agent Connections</h2>
+        <p style="color:#6a7a9a; margin-bottom:1.5rem; font-size:0.9rem;">Monitor HCS-10 connections and chat relay sessions with registered agents.</p>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:1rem; margin-bottom:2rem;">
+          <div class="stat-card" style="text-align:center;">
+            <div class="value" id="conn-active" style="color:#00d4ff;">0</div>
+            <div class="label">Active Connections</div>
+          </div>
+          <div class="stat-card" style="text-align:center;">
+            <div class="value" id="conn-pending" style="color:#f59e0b;">0</div>
+            <div class="label">Pending Requests</div>
+          </div>
+          <div class="stat-card" style="text-align:center;">
+            <div class="value" id="conn-relay" style="color:#a855f7;">0</div>
+            <div class="label">Chat Relay Sessions</div>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem;">
+          <div>
+            <h3 style="color:#00d4ff; font-size:1rem; margin-bottom:1rem;">HCS-10 Connections</h3>
+            <div id="connections-list" style="min-height:100px;"></div>
+          </div>
+          <div>
+            <h3 style="color:#a855f7; font-size:1rem; margin-bottom:1rem;">Chat Relay Sessions</h3>
+            <div id="relay-sessions-list" style="min-height:100px;"></div>
+          </div>
+        </div>
+
+        <div style="margin-top:2rem;">
+          <h3 style="color:#f59e0b; font-size:1rem; margin-bottom:1rem;">Pending Connection Requests</h3>
+          <div id="pending-requests-list" style="min-height:60px;"></div>
+        </div>
+
+        <button class="btn btn-primary" onclick="loadConnections()" style="margin-top:1.5rem; padding:0.75rem 2rem;">Refresh Connections</button>
+      </div>
+    </div>
     <!-- Live Demo View -->
     <div class="view" id="view-demo" role="tabpanel" aria-labelledby="tab-demo">
       <div style="max-width:800px;">
@@ -648,6 +689,7 @@ function getDashboardHTML(): string {
       tab.classList.add('active');
       tab.setAttribute('aria-selected', 'true');
       document.getElementById('view-' + tab.dataset.view).classList.add('active');
+      if (tab.dataset.view === 'connections') { loadConnections(); }
     }
 
     // Show skeleton loading
@@ -1116,6 +1158,68 @@ function getDashboardHTML(): string {
 
     // Live Demo
     let demoRunning = false;
+    // Load connections & relay sessions
+    async function loadConnections() {
+      try {
+        const [connRes, relayRes] = await Promise.all([
+          fetch('/api/connections').then(function(r) { return r.json(); }),
+          fetch('/api/chat/relay/sessions').then(function(r) { return r.json(); }).catch(function() { return { sessions: [] }; }),
+        ]);
+
+        document.getElementById('conn-active').textContent = connRes.active || 0;
+        document.getElementById('conn-pending').textContent = connRes.pending || 0;
+        document.getElementById('conn-relay').textContent = (relayRes.sessions || []).length;
+
+        var connList = document.getElementById('connections-list');
+        var connections = connRes.connections || [];
+        if (connections.length === 0) {
+          connList.innerHTML = '<div style="color:#6a7a9a; font-size:0.85rem; padding:1rem; background:#111827; border-radius:8px; border:1px solid #1e2a4a;">No connections yet. Connect to agents via the API or chat interface.</div>';
+        } else {
+          connList.innerHTML = connections.map(function(c) {
+            var statusColor = c.status === 'active' ? '#00d4ff' : '#6a7a9a';
+            return '<div style="padding:0.75rem; margin-bottom:0.5rem; background:#111827; border-radius:8px; border:1px solid #1e2a4a;">' +
+              '<div style="display:flex; justify-content:space-between; align-items:center;">' +
+              '<span style="color:#fff; font-size:0.85rem; font-weight:600;">' + c.remote_account + '</span>' +
+              '<span style="color:' + statusColor + '; font-size:0.75rem; text-transform:uppercase;">' + c.status + '</span>' +
+              '</div>' +
+              '<div style="color:#6a7a9a; font-size:0.75rem; margin-top:0.25rem;">' + c.messages_exchanged + ' messages | ' + c.connection_topic + '</div>' +
+              '</div>';
+          }).join('');
+        }
+
+        var relayList = document.getElementById('relay-sessions-list');
+        var sessions = relayRes.sessions || [];
+        if (sessions.length === 0) {
+          relayList.innerHTML = '<div style="color:#6a7a9a; font-size:0.85rem; padding:1rem; background:#111827; border-radius:8px; border:1px solid #1e2a4a;">No chat relay sessions. Start one via chat: &quot;Chat with agent [id]&quot;</div>';
+        } else {
+          relayList.innerHTML = sessions.map(function(s) {
+            return '<div style="padding:0.75rem; margin-bottom:0.5rem; background:#111827; border-radius:8px; border:1px solid #1e2a4a;">' +
+              '<div style="display:flex; justify-content:space-between; align-items:center;">' +
+              '<span style="color:#fff; font-size:0.85rem; font-weight:600;">Agent: ' + s.agentId + '</span>' +
+              '<span style="color:#a855f7; font-size:0.75rem;">' + s.messageCount + ' msgs</span>' +
+              '</div>' +
+              '<div style="color:#6a7a9a; font-size:0.75rem; margin-top:0.25rem;">Session: ' + s.sessionId + '</div>' +
+              '</div>';
+          }).join('');
+        }
+
+        var pendingList = document.getElementById('pending-requests-list');
+        var pendingReqs = connRes.pending_requests || [];
+        if (pendingReqs.length === 0) {
+          pendingList.innerHTML = '<div style="color:#6a7a9a; font-size:0.85rem; padding:1rem; background:#111827; border-radius:8px; border:1px solid #1e2a4a;">No pending connection requests.</div>';
+        } else {
+          pendingList.innerHTML = pendingReqs.map(function(r) {
+            return '<div style="padding:0.75rem; margin-bottom:0.5rem; background:#111827; border-radius:8px; border:1px solid #2d1f0a;">' +
+              '<div style="color:#f59e0b; font-size:0.85rem; font-weight:600;">From: ' + r.from_account + '</div>' +
+              '<div style="color:#6a7a9a; font-size:0.75rem; margin-top:0.25rem;">' + r.timestamp + ' | Topic: ' + r.from_inbound_topic + '</div>' +
+              '</div>';
+          }).join('');
+        }
+      } catch (e) {
+        document.getElementById('connections-list').innerHTML = '<div style="color:#ff4444; font-size:0.85rem;">Error loading connections: ' + e.message + '</div>';
+      }
+    }
+
     async function runLiveDemo() {
       if (demoRunning) return;
       demoRunning = true;

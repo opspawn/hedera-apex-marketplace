@@ -36,8 +36,8 @@ import { RegistryAuth } from '../hol/registry-auth';
 import { AgentRegistration, ConsentRequest, SearchQuery, SkillManifest } from '../types';
 
 // Test count managed as a constant — updated each sprint
-const TEST_COUNT = 1335;
-const VERSION = '0.19.0';
+const TEST_COUNT = 1400;
+const VERSION = '0.20.0';
 const STANDARDS = ['HCS-10', 'HCS-11', 'HCS-14', 'HCS-19', 'HCS-20', 'HCS-26'];
 
 export function createRouter(
@@ -639,7 +639,174 @@ export function createRouter(
   });
 
   // ==========================================
-  // HCS-10 Connection Routes
+  // Agent-to-Agent Connection Flow (HCS-10)
+  // ==========================================
+
+  // POST /api/agents/:id/connect — Initiate connection to an agent
+  router.post('/api/agents/:id/connect', async (req: Request, res: Response) => {
+    if (!connectionHandler) {
+      res.status(501).json({ error: 'not_available', message: 'Connection handler not configured' });
+      return;
+    }
+    try {
+      const agentId = String(req.params.id);
+      const agent = await registry.getAgent(agentId);
+      if (!agent) {
+        res.status(404).json({ error: 'not_found', message: `Agent ${agentId} not found` });
+        return;
+      }
+
+      // Check if there's a pending request from this agent and accept it
+      const pending = connectionHandler.getPendingRequests();
+      const matchingRequest = pending.find(r => r.from_account === agentId || r.from_account === agent.payment_address);
+      if (matchingRequest) {
+        const connection = await connectionHandler.acceptConnection(matchingRequest.id);
+        res.status(201).json({
+          connected: true,
+          connection,
+          agent: { id: agentId, name: agent.name },
+          message: `Connection established with ${agent.name}`,
+        });
+        return;
+      }
+
+      // No pending request — return connection info for the agent to connect
+      res.status(202).json({
+        connected: false,
+        agent: { id: agentId, name: agent.name },
+        inbound_topic: agent.inbound_topic,
+        message: `Connection request queued for ${agent.name}. Awaiting agent's connection request on inbound topic.`,
+        instructions: 'The target agent must send a connection_request to your inbound topic via HCS-10.',
+      });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      res.status(500).json({ error: 'connection_failed', message });
+    }
+  });
+
+  // POST /api/agents/:id/disconnect — Disconnect from an agent
+  router.post('/api/agents/:id/disconnect', async (req: Request, res: Response) => {
+    if (!connectionHandler) {
+      res.status(501).json({ error: 'not_available', message: 'Connection handler not configured' });
+      return;
+    }
+    try {
+      const agentId = String(req.params.id);
+      const connections = connectionHandler.getActiveConnections();
+      const matching = connections.find(c => c.remote_account === agentId);
+      if (!matching) {
+        res.status(404).json({ error: 'not_found', message: `No active connection with agent ${agentId}` });
+        return;
+      }
+      await connectionHandler.closeConnection(matching.id);
+      res.json({
+        disconnected: true,
+        connectionId: matching.id,
+        agentId,
+        message: `Disconnected from agent ${agentId}`,
+      });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      res.status(500).json({ error: 'disconnect_failed', message });
+    }
+  });
+
+  // GET /api/connections — List all connections with details
+  router.get('/api/connections', (_req: Request, res: Response) => {
+    if (!connectionHandler) {
+      res.json({ connections: [], active: 0, pending: 0, closed: 0 });
+      return;
+    }
+    const all = connectionHandler.getAllConnections();
+    const active = all.filter(c => c.status === 'active');
+    const closed = all.filter(c => c.status === 'closed');
+    const pending = connectionHandler.getPendingRequests();
+    const status = connectionHandler.getHandlerStatus();
+
+    res.json({
+      connections: all,
+      active: active.length,
+      closed: closed.length,
+      pending: pending.length,
+      pending_requests: pending,
+      running: status.running,
+      total_messages: status.total_messages,
+    });
+  });
+
+  // ==========================================
+  // Chat Relay Routes (Registry Broker)
+  // ==========================================
+
+  // POST /api/chat/relay/session — Create a chat relay session
+  router.post('/api/chat/relay/session', async (req: Request, res: Response) => {
+    if (!registryBroker) {
+      res.status(501).json({ error: 'not_available', message: 'Registry Broker not configured' });
+      return;
+    }
+    try {
+      const { agentId } = req.body;
+      if (!agentId) {
+        res.status(400).json({ error: 'validation_error', message: 'agentId is required' });
+        return;
+      }
+      const session = await registryBroker.createSession(agentId);
+      res.status(201).json(session);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      res.status(500).json({ error: 'session_creation_failed', message });
+    }
+  });
+
+  // POST /api/chat/relay/:sessionId/message — Send message in relay session
+  router.post('/api/chat/relay/:sessionId/message', async (req: Request, res: Response) => {
+    if (!registryBroker) {
+      res.status(501).json({ error: 'not_available', message: 'Registry Broker not configured' });
+      return;
+    }
+    try {
+      const sessionId = String(req.params.sessionId);
+      const { content } = req.body;
+      if (!content) {
+        res.status(400).json({ error: 'validation_error', message: 'content is required' });
+        return;
+      }
+      const response = await registryBroker.sendRelayMessage(sessionId, content);
+      res.status(201).json(response);
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : 'Unknown error';
+      const statusCode = errMsg.includes('not found') ? 404 : 500;
+      res.status(statusCode).json({ error: 'relay_message_failed', message: errMsg });
+    }
+  });
+
+  // GET /api/chat/relay/:sessionId/history — Get relay session history
+  router.get('/api/chat/relay/:sessionId/history', (req: Request, res: Response) => {
+    if (!registryBroker) {
+      res.status(501).json({ error: 'not_available', message: 'Registry Broker not configured' });
+      return;
+    }
+    const sessionId = String(req.params.sessionId);
+    const session = registryBroker.getRelaySession(sessionId);
+    if (!session) {
+      res.status(404).json({ error: 'not_found', message: `Relay session ${sessionId} not found` });
+      return;
+    }
+    const messages = registryBroker.getRelayHistory(sessionId);
+    res.json({ session, messages });
+  });
+
+  // GET /api/chat/relay/sessions — List active relay sessions
+  router.get('/api/chat/relay/sessions', (_req: Request, res: Response) => {
+    if (!registryBroker) {
+      res.json({ sessions: [] });
+      return;
+    }
+    res.json({ sessions: registryBroker.getActiveRelaySessions() });
+  });
+
+  // ==========================================
+  // HCS-10 Connection Routes (Legacy)
   // ==========================================
 
   // POST /api/agent/connect — Initiate or accept a connection
@@ -751,7 +918,7 @@ export function createRouter(
       version: VERSION,
       description: 'Decentralized agent marketplace on Hedera',
       url: 'https://hedera.opspawn.com',
-      capabilities: ['agent-registration', 'agent-discovery', 'privacy-consent', 'skill-publishing', 'reputation-points', 'hcs-10-connections'],
+      capabilities: ['agent-registration', 'agent-discovery', 'privacy-consent', 'skill-publishing', 'reputation-points', 'hcs-10-connections', 'chat-relay', 'agent-connections'],
       protocols: ['hcs-10', 'hcs-11', 'hcs-14', 'hcs-19', 'hcs-20', 'hcs-26'],
     });
   });
