@@ -168,12 +168,12 @@ describe('ERC8004IdentityManager', () => {
 
     test('uses default display name when not provided', async () => {
       const profile = await manager.getDualIdentityProfile(TEST_UAID);
-      expect(profile.hcs10Agent.displayName).toBe('HireWire Agent Marketplace');
+      expect(profile.hcs10Agent.displayName).toBe('HederaConnect');
     });
 
     test('uses default alias when not provided', async () => {
       const profile = await manager.getDualIdentityProfile(TEST_UAID);
-      expect(profile.hcs10Agent.alias).toBe('hirewire-marketplace');
+      expect(profile.hcs10Agent.alias).toBe('hedera-connect');
     });
   });
 

@@ -15,12 +15,12 @@ jest.mock('@hashgraphonline/standards-sdk', () => ({
       agentId: 'test-agent-456',
     }),
     search: jest.fn().mockResolvedValue({
-      agents: [{ uaid: 'test-uaid-123', display_name: 'HireWire Agent Marketplace' }],
+      agents: [{ uaid: 'test-uaid-123', display_name: 'HederaConnect' }],
     }),
     getAgent: jest.fn().mockResolvedValue({
       uaid: 'test-uaid-123',
       agentId: 'test-agent-456',
-      display_name: 'HireWire Agent Marketplace',
+      display_name: 'HederaConnect',
       bio: 'Test agent',
       tags: ['marketplace'],
       protocol: 'hcs-10',
@@ -75,9 +75,9 @@ describe('RegistryBroker', () => {
   describe('buildProfile', () => {
     it('should return a valid agent profile', () => {
       const profile = broker.buildProfile();
-      expect(profile.display_name).toBe('HireWire Agent Marketplace');
-      expect(profile.alias).toBe('hirewire-marketplace');
-      expect(profile.bio).toContain('Decentralized AI agent marketplace');
+      expect(profile.display_name).toBe('HederaConnect');
+      expect(profile.alias).toBe('hedera-connect');
+      expect(profile.bio).toContain('multi-protocol discovery');
       expect(profile.tags).toContain('marketplace');
       expect(profile.tags).toContain('hedera');
       expect(profile.socials).toHaveLength(2);
@@ -95,10 +95,11 @@ describe('RegistryBroker', () => {
 
     it('should include agent capabilities', () => {
       const profile = broker.buildProfile();
-      expect(profile.capabilities).toContain('agent-discovery');
-      expect(profile.capabilities).toContain('agent-hiring');
-      expect(profile.capabilities).toContain('skill-publishing');
-      expect(profile.capabilities).toContain('reputation-tracking');
+      expect(profile.capabilities).toContain('marketplace');
+      expect(profile.capabilities).toContain('discovery');
+      expect(profile.capabilities).toContain('chat');
+      expect(profile.capabilities).toContain('trust-analytics');
+      expect(profile.capabilities).toContain('privacy');
     });
   });
 
@@ -176,7 +177,7 @@ describe('RegistryBroker searchAgents', () => {
   it('should search agents with text query', async () => {
     const result = await broker.searchAgents({ q: 'marketplace' });
     expect(result.agents).toHaveLength(1);
-    expect(result.agents[0].display_name).toBe('HireWire Agent Marketplace');
+    expect(result.agents[0].display_name).toBe('HederaConnect');
     expect(result.query.q).toBe('marketplace');
     expect(result.timestamp).toBeTruthy();
   });
@@ -226,14 +227,14 @@ describe('RegistryBroker getAgentProfile', () => {
   it('should get agent by UAID', async () => {
     const agent = await broker.getAgentProfile('test-uaid-123');
     expect(agent).not.toBeNull();
-    expect(agent?.display_name).toBe('HireWire Agent Marketplace');
+    expect(agent?.display_name).toBe('HederaConnect');
     expect(agent?.uaid).toBe('test-uaid-123');
   });
 
   it('should get agent by agent ID', async () => {
     const agent = await broker.getAgentProfile('test-agent-456');
     expect(agent).not.toBeNull();
-    expect(agent?.display_name).toBe('HireWire Agent Marketplace');
+    expect(agent?.display_name).toBe('HederaConnect');
   });
 
   it('should return agent tags', async () => {

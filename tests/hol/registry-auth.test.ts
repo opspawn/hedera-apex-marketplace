@@ -18,7 +18,7 @@ jest.mock('@hashgraphonline/standards-sdk', () => ({
       agentId: 'live-agent-001',
     }),
     search: jest.fn().mockResolvedValue({
-      agents: [{ uaid: 'live-uaid-001', display_name: 'HireWire Agent Marketplace' }],
+      agents: [{ uaid: 'live-uaid-001', display_name: 'HederaConnect' }],
     }),
   })),
 }));

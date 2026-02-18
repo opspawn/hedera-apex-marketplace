@@ -1,7 +1,7 @@
 /**
  * HOL Registry Broker Integration
  *
- * Registers the HireWire Agent Marketplace in the HOL Registry Broker
+ * Registers the HederaConnect Agent in the HOL Registry Broker
  * for cross-protocol discovery. Uses RegistryBrokerClient from
  * @hashgraphonline/standards-sdk for authentication and registration.
  *
@@ -181,7 +181,7 @@ export class RegistryBroker {
         accountId: this.config.accountId,
         network: `hedera:${this.config.network}`,
         privateKey: this.config.privateKey,
-        label: 'HireWire Marketplace Agent',
+        label: 'HederaConnect Agent',
       });
     }
 
@@ -193,17 +193,17 @@ export class RegistryBroker {
    */
   buildProfile(): RegistrationProfile {
     return {
-      display_name: 'HireWire Agent Marketplace',
-      alias: 'hirewire-marketplace',
-      bio: 'Decentralized AI agent marketplace on Hedera with HCS-10 communication, HCS-26 skills registry, and HCS-20 reputation points',
-      tags: ['marketplace', 'agents', 'hedera', 'hcs-10', 'hcs-26', 'hcs-20', 'reputation'],
+      display_name: 'HederaConnect',
+      alias: 'hedera-connect',
+      bio: 'AI Agent Marketplace with multi-protocol discovery, trust analytics, and privacy-preserving agent interaction',
+      tags: ['marketplace', 'discovery', 'chat', 'trust-analytics', 'privacy', 'hedera', 'hcs-10'],
       socials: [
         { platform: 'twitter', handle: '@opspawn' },
         { platform: 'github', handle: 'opspawn' },
       ],
       model: 'claude-opus-4-6',
       creator: 'OpSpawn',
-      capabilities: ['agent-discovery', 'agent-hiring', 'skill-publishing', 'reputation-tracking'],
+      capabilities: ['marketplace', 'discovery', 'chat', 'trust-analytics', 'privacy'],
     };
   }
 
@@ -243,7 +243,7 @@ export class RegistryBroker {
         endpoint,
         metadata: {
           provider: 'opspawn',
-          version: '0.18.0',
+          version: '0.43.0',
           standards: ['HCS-10', 'HCS-11', 'HCS-14', 'HCS-19', 'HCS-20', 'HCS-26'],
         },
       };
@@ -515,7 +515,7 @@ export class RegistryBroker {
       const client = await this.authenticate() as Record<string, (...args: unknown[]) => Promise<unknown>>;
       const searchMethod = client.search;
       if (typeof searchMethod === 'function') {
-        const results = await searchMethod.call(client, { q: 'hirewire-marketplace' }) as Record<string, unknown>;
+        const results = await searchMethod.call(client, { q: 'HederaConnect' }) as Record<string, unknown>;
         const agents = (results?.agents || results?.results || []) as unknown[];
         return agents.length > 0;
       }

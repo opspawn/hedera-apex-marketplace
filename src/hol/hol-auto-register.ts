@@ -105,7 +105,7 @@ export class HOLAutoRegister {
       registry: 'hashgraph-online',
       metadata: {
         provider: 'opspawn-hirewire-marketplace',
-        version: '0.37.0',
+        version: '0.43.0',
         marketplace_agent_id: agent.agent_id,
         inbound_topic: agent.inbound_topic,
         outbound_topic: agent.outbound_topic,

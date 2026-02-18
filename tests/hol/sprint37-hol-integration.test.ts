@@ -618,10 +618,10 @@ describe('Sprint 37: HOL Auto-Registration — All 24 Agents', () => {
     expect((payload.metadata as any).marketplace_agent_id).toBe('meta-id');
   });
 
-  it('should include version 0.37.0 in metadata', () => {
+  it('should include version in metadata', () => {
     const agent = makeDemoAgent();
     const payload = autoRegister.buildPayload(agent);
-    expect((payload.metadata as any).version).toBe('0.37.0');
+    expect((payload.metadata as any).version).toBe('0.43.0');
   });
 
   it('should include inbound/outbound topics in metadata when available', () => {
@@ -672,12 +672,12 @@ describe('Sprint 37: Registry Broker', () => {
       network: 'testnet',
     });
     const profile = broker.buildProfile();
-    expect(profile.display_name).toBe('HireWire Agent Marketplace');
-    expect(profile.alias).toBe('hirewire-marketplace');
+    expect(profile.display_name).toBe('HederaConnect');
+    expect(profile.alias).toBe('hedera-connect');
     expect(profile.tags).toContain('marketplace');
     expect(profile.tags).toContain('hcs-10');
     expect(profile.creator).toBe('OpSpawn');
-    expect(profile.capabilities).toContain('agent-discovery');
+    expect(profile.capabilities).toContain('marketplace');
   });
 
   it('should get initial status as not registered', () => {

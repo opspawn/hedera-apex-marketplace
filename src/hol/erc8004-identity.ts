@@ -170,8 +170,8 @@ export class ERC8004IdentityManager {
     return {
       hcs10Agent: {
         uaid,
-        displayName: agentInfo?.displayName || 'HireWire Agent Marketplace',
-        alias: agentInfo?.alias || 'hirewire-marketplace',
+        displayName: agentInfo?.displayName || 'HederaConnect',
+        alias: agentInfo?.alias || 'hedera-connect',
         protocol: 'hcs-10',
         inboundTopic: agentInfo?.inboundTopic,
         outboundTopic: agentInfo?.outboundTopic,
