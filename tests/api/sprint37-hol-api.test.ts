@@ -286,7 +286,7 @@ describe('Sprint 37 API: /api/hol/register/quote', () => {
 // ═══════════════════════════════════════════════════════════════════════
 
 describe('Sprint 37 API: /api/hol/register/all', () => {
-  it('should auto-register all 8 demo agents', async () => {
+  it('should auto-register all 24 demo agents', async () => {
     const client = new HOLRegistryClient({ apiKey: 'test' });
     const autoRegister = new HOLAutoRegister(client, 'https://hedera.opspawn.com');
 
@@ -308,10 +308,10 @@ describe('Sprint 37 API: /api/hol/register/all', () => {
     }
 
     const result = await autoRegister.autoRegisterAll(agents);
-    expect(result.registered).toBe(8);
+    expect(result.registered).toBe(24);
     expect(result.skipped).toBe(0);
     expect(result.failed).toBe(0);
-    expect(result.records).toHaveLength(8);
+    expect(result.records).toHaveLength(24);
   });
 
   it('should report registration status after auto-register', async () => {

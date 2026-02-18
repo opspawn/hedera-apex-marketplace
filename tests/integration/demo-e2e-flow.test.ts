@@ -66,12 +66,12 @@ describe('End-to-End Demo Flow: seed → register → search → hire → pay �
     const demoSteps = await request(app, 'GET', '/api/demo/steps');
     expect(demoSteps.body.total_steps).toBe(8);
     expect(demoSteps.body.summary).toBeDefined();
-    expect(demoSteps.body.summary.agentsSeeded).toBe(8);
+    expect(demoSteps.body.summary.agentsSeeded).toBe(24);
 
     // Phase 5: Verify agents were seeded (via marketplace discover, not /api/agents)
     const allAgents = await request(app, 'GET', '/api/marketplace/discover');
-    expect(allAgents.body.total).toBe(8);
-    expect(allAgents.body.agents.length).toBe(8);
+    expect(allAgents.body.total).toBe(24);
+    expect(allAgents.body.agents.length).toBe(24);
 
     // Phase 6: Search the marketplace
     const search = await request(app, 'GET', '/api/marketplace/discover?q=security');
@@ -108,8 +108,8 @@ describe('End-to-End Demo Flow: seed → register → search → hire → pay �
     // Phase 10: Check leaderboard
     const leaderboard = await request(app, 'GET', '/api/v1/points/leaderboard');
     expect(leaderboard.status).toBe(200);
-    expect(leaderboard.body.leaderboard.length).toBe(8);
-    expect(leaderboard.body.total_agents).toBe(8);
+    expect(leaderboard.body.leaderboard.length).toBe(24);
+    expect(leaderboard.body.total_agents).toBe(24);
 
     // Phase 11: Verify A2A discovery card
     const agentCard = await request(app, 'GET', '/.well-known/agent-card.json');
@@ -147,9 +147,9 @@ describe('End-to-End Demo Flow: seed → register → search → hire → pay �
     expect(regRes.body.agent).toBeDefined();
     const newAgentId = regRes.body.agent.agent_id;
 
-    // Total should now be 9 (8 seeded + 1 new)
+    // Total should now be 25 (24 seeded + 1 new)
     const agents = await request(app, 'GET', '/api/marketplace/discover');
-    expect(agents.body.total).toBe(9);
+    expect(agents.body.total).toBe(25);
 
     // Search for the new agent
     const search = await request(app, 'GET', '/api/marketplace/discover?q=e2e');

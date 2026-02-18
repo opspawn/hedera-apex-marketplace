@@ -30,21 +30,21 @@ describe('Seed Demo Agents', () => {
     marketplace = new MarketplaceService(hcs10, hcs11, hcs14, hcs19Identity, hcs26);
   });
 
-  it('should seed 8 demo agents', async () => {
+  it('should seed 24 demo agents', async () => {
     const result = await seedDemoAgents(marketplace, privacy, points);
-    expect(result.seeded).toBe(8);
-    expect(result.agents.length).toBe(8);
+    expect(result.seeded).toBe(24);
+    expect(result.agents.length).toBe(24);
   });
 
   it('should populate marketplace with agents', async () => {
     await seedDemoAgents(marketplace, privacy, points);
-    expect(marketplace.getAgentCount()).toBe(8);
+    expect(marketplace.getAgentCount()).toBe(24);
   });
 
   it('should assign unique agent IDs', async () => {
     const result = await seedDemoAgents(marketplace, privacy, points);
     const ids = result.agents.map(a => a.agent_id);
-    expect(new Set(ids).size).toBe(8);
+    expect(new Set(ids).size).toBe(24);
   });
 
   it('should set reputation scores', async () => {
@@ -76,17 +76,17 @@ describe('Seed Demo Agents', () => {
 
   it('should be idempotent (skip if already seeded)', async () => {
     const first = await seedDemoAgents(marketplace, privacy, points);
-    expect(first.seeded).toBe(8);
+    expect(first.seeded).toBe(24);
     const second = await seedDemoAgents(marketplace, privacy, points);
     expect(second.seeded).toBe(0);
-    expect(marketplace.getAgentCount()).toBe(8);
+    expect(marketplace.getAgentCount()).toBe(24);
   });
 
   it('should discover seeded agents through marketplace', async () => {
     await seedDemoAgents(marketplace, privacy, points);
     const result = await marketplace.discoverAgents({});
-    expect(result.total).toBe(8);
-    expect(result.agents.length).toBe(8);
+    expect(result.total).toBe(24);
+    expect(result.agents.length).toBe(24);
   });
 
   it('should make agents searchable by name', async () => {

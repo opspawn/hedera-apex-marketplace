@@ -96,7 +96,7 @@ describe('Sprint 15: Demo Flow Recovery', () => {
     const flow = new DemoFlow(marketplace, hcs19, hcs20);
     const result = await flow.run();
     expect(result.summary).toBeDefined();
-    expect(result.summary!.agentsSeeded).toBe(8);
+    expect(result.summary!.agentsSeeded).toBe(24);
     expect(result.summary!.totalSteps).toBe(8);
     expect(result.summary!.pointsAwarded).toBe(150);
     expect(result.summary!.selectedAgent).toBeTruthy();
@@ -170,8 +170,8 @@ describe('Sprint 15: Demo Flow State Management', () => {
     const flow = new DemoFlow(marketplace, hcs19, hcs20);
     const result = await flow.run();
     const seedStep = result.steps.find(s => s.type === 'seed');
-    expect(seedStep?.data?.seeded).toBe(8);
-    expect(seedStep?.data?.total).toBe(8);
+    expect(seedStep?.data?.seeded).toBe(24);
+    expect(seedStep?.data?.total).toBe(24);
   });
 
   test('search step records query and results', async () => {

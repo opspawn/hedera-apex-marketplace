@@ -55,8 +55,8 @@ describe('Sprint 23: /api/agents with seed agents', () => {
     const res = await request(app, 'GET', '/api/agents');
     expect(res.status).toBe(200);
     expect(res.body.agents).toBeDefined();
-    expect(res.body.agents.length).toBe(8);
-    expect(res.body.total).toBe(8);
+    expect(res.body.agents.length).toBe(24);
+    expect(res.body.total).toBe(24);
   });
 
   test('seed agents have required fields', async () => {
@@ -103,7 +103,7 @@ describe('Sprint 23: /api/agents with seed agents', () => {
     const res = await request(app, 'GET', '/api/agents?limit=3');
     expect(res.status).toBe(200);
     expect(res.body.agents.length).toBe(3);
-    expect(res.body.total).toBe(8);
+    expect(res.body.total).toBe(24);
   });
 
   test('GET /api/agents/:id returns a seed agent', async () => {

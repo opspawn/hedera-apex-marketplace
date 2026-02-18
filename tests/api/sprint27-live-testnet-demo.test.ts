@@ -5,7 +5,7 @@
  * - Version bump to 0.35.0
  * - /api/testnet/balance endpoint returns balance info
  * - /api/demo/flow includes hedera section with hashscan links
- * - /api/agents returns all 8 seed agents
+ * - /api/agents returns all 24 seed agents
  * - Demo flow step 1 includes hedera_transactions data
  */
 
@@ -122,24 +122,24 @@ describe('Sprint 27: Live Testnet Demo + Quality', () => {
   });
 
   // =============================================
-  // Seed Agents — All 8 must appear
+  // Seed Agents — All 24 must appear
   // =============================================
 
-  test('seedDemoAgents registers all 8 agents', async () => {
+  test('seedDemoAgents registers all 24 agents', async () => {
     const { marketplace, hcs19: privacy, hcs20: points } = createApp();
     const result = await seedDemoAgents(marketplace, privacy, points);
-    expect(result.seeded).toBe(8);
-    expect(result.agents.length).toBe(8);
-    expect(marketplace.getAgentCount()).toBe(8);
+    expect(result.seeded).toBe(24);
+    expect(result.agents.length).toBe(24);
+    expect(marketplace.getAgentCount()).toBe(24);
   });
 
-  test('GET /api/agents after seed returns 8 agents', async () => {
+  test('GET /api/agents after seed returns 24 agents', async () => {
     const { app: seededApp, marketplace, hcs19: privacy, hcs20: points } = createApp();
     await seedDemoAgents(marketplace, privacy, points);
     const res = await req(seededApp, 'GET', '/api/agents');
     expect(res.status).toBe(200);
-    expect(res.body.agents.length).toBe(8);
-    expect(res.body.total).toBe(8);
+    expect(res.body.agents.length).toBe(24);
+    expect(res.body.total).toBe(24);
   });
 
   test('seed agents each have unique names matching DEMO_AGENTS', async () => {

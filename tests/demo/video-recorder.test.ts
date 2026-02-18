@@ -100,7 +100,7 @@ describe('VideoRecorder', () => {
         total_duration_ms: 0,
         frames: [],
         demo_summary: {
-          agents_shown: 8,
+          agents_shown: 24,
           skills_published: 14,
           hires_completed: 1,
           points_awarded: 150,
@@ -109,7 +109,7 @@ describe('VideoRecorder', () => {
       };
       expect(manifest.version).toBe('0.14.0');
       expect(manifest.demo_summary.standards_demonstrated.length).toBe(6);
-      expect(manifest.demo_summary.agents_shown).toBe(8);
+      expect(manifest.demo_summary.agents_shown).toBe(24);
     });
   });
 });

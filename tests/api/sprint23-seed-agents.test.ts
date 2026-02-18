@@ -35,9 +35,9 @@ describe('Sprint 23: Seed Agent Quality', () => {
     await seedDemoAgents(ctx.marketplace, ctx.hcs19, ctx.hcs20);
   }, 60000);
 
-  test('all 8 seed agents are present', async () => {
+  test('all 24 seed agents are present', async () => {
     const res = await request(app, 'GET', '/api/agents');
-    expect(res.body.agents.length).toBe(8);
+    expect(res.body.agents.length).toBe(24);
   });
 
   test('SentinelAI is the security agent', async () => {
@@ -136,10 +136,10 @@ describe('Sprint 23: Seed Agent Quality', () => {
     expect(agentsRes.body.total).toBe(discoverRes.body.total);
   });
 
-  test('leaderboard has 8 agents after seeding', async () => {
+  test('leaderboard has 24 agents after seeding', async () => {
     const res = await request(app, 'GET', '/api/v1/points/leaderboard');
-    expect(res.body.leaderboard.length).toBe(8);
-    expect(res.body.total_agents).toBe(8);
+    expect(res.body.leaderboard.length).toBe(24);
+    expect(res.body.total_agents).toBe(24);
   });
 
   test('all agents have positive points after seeding', async () => {

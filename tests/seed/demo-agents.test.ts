@@ -1,8 +1,8 @@
 import { DEMO_AGENTS } from '../../src/seed/demo-agents';
 
 describe('Demo Agents Seed Data', () => {
-  it('should have 8 demo agents', () => {
-    expect(DEMO_AGENTS.length).toBe(8);
+  it('should have 24 demo agents', () => {
+    expect(DEMO_AGENTS.length).toBe(24);
   });
 
   it('each agent should have required fields', () => {

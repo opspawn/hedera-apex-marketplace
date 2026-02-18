@@ -174,7 +174,7 @@ describe('DemoFlow Error Boundaries', () => {
       const state = await flow.run();
 
       expect(state.summary).toBeDefined();
-      expect(state.summary!.agentsSeeded).toBe(8);
+      expect(state.summary!.agentsSeeded).toBe(24);
       expect(state.summary!.searchResults).toBeGreaterThan(0);
       expect(state.summary!.selectedAgent).toBeTruthy();
       expect(state.summary!.hireTaskId).toBeTruthy();

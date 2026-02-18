@@ -60,14 +60,14 @@ describe('DemoFlow', () => {
       expect(types).toEqual(['seed', 'search', 'select', 'hire', 'complete', 'rate', 'points', 'multi_protocol']);
     });
 
-    it('should seed 8 demo agents', async () => {
+    it('should seed 24 demo agents', async () => {
       const { marketplace, hcs19, hcs20 } = createDeps();
       const flow = new DemoFlow(marketplace, hcs19, hcs20);
       const state = await flow.run();
 
       const seedStep = state.steps.find(s => s.type === 'seed');
       expect(seedStep).toBeDefined();
-      expect(seedStep!.data?.seeded).toBe(8);
+      expect(seedStep!.data?.seeded).toBe(24);
     });
 
     it('should search and find agents', async () => {
@@ -117,7 +117,7 @@ describe('DemoFlow', () => {
       const state = await flow.run();
 
       expect(state.summary).toBeDefined();
-      expect(state.summary!.agentsSeeded).toBe(8);
+      expect(state.summary!.agentsSeeded).toBe(24);
       expect(state.summary!.selectedAgent).toBeDefined();
       expect(state.summary!.hireTaskId).toBeDefined();
       expect(state.summary!.pointsAwarded).toBe(150);
@@ -154,7 +154,7 @@ describe('DemoFlow', () => {
 
       // First run seeds
       const state1 = await flow.run();
-      expect(state1.summary!.agentsSeeded).toBe(8);
+      expect(state1.summary!.agentsSeeded).toBe(24);
 
       // Second run: create new DemoFlow instance with same marketplace
       const flow2 = new DemoFlow(marketplace, hcs19, hcs20);

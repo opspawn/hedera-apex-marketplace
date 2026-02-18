@@ -157,8 +157,8 @@ describe('Demo API Validation', () => {
       if (status.body.status === 'completed') {
         const seedStep = status.body.steps.find((s: any) => s.type === 'seed');
         expect(seedStep).toBeDefined();
-        expect(seedStep.data.seeded).toBe(8);
-        expect(seedStep.data.total).toBe(8);
+        expect(seedStep.data.seeded).toBe(24);
+        expect(seedStep.data.total).toBe(24);
       }
     }, 15000);
 
@@ -169,7 +169,7 @@ describe('Demo API Validation', () => {
       // Demo seeds into MarketplaceService, use discover endpoint
       const agents = await request(app, 'GET', '/api/marketplace/discover');
       expect(agents.status).toBe(200);
-      expect(agents.body.total).toBe(8);
+      expect(agents.body.total).toBe(24);
     }, 15000);
   });
 });

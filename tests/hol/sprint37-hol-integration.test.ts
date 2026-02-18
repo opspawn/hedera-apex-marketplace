@@ -3,7 +3,7 @@
  *
  * Comprehensive end-to-end tests covering:
  * - HOL Registry Client (all endpoints)
- * - HOL Auto-Registration (all 8 agents)
+ * - HOL Auto-Registration (all 24 agents)
  * - API route proxying
  * - Dashboard integration data flow
  * - Cache behavior
@@ -314,7 +314,7 @@ describe('Sprint 37: HOL Registry Client — Advanced', () => {
           type: 'ai_agent',
           version: '1.0',
           display_name: 'HireWire Agent Marketplace',
-          bio: 'Decentralized agent marketplace with 8 agents, 17+ skills',
+          bio: 'Decentralized agent marketplace with 24 agents, 17+ skills',
           aiAgent: {
             type: 'autonomous',
             model: 'claude-opus-4-6',
@@ -421,7 +421,7 @@ describe('Sprint 37: HOL Registry Client — Advanced', () => {
 // SECTION 2: HOL Auto-Registration — All 8 Agents
 // ═══════════════════════════════════════════════════════════════════════
 
-describe('Sprint 37: HOL Auto-Registration — All 8 Agents', () => {
+describe('Sprint 37: HOL Auto-Registration — All 24 Agents', () => {
   let client: HOLRegistryClient;
   let autoRegister: HOLAutoRegister;
 
@@ -997,8 +997,8 @@ describe('Sprint 37: Connection Handler', () => {
 // ═══════════════════════════════════════════════════════════════════════
 
 describe('Sprint 37: Seed Agent HOL Compatibility', () => {
-  it('should have 8 demo agents', () => {
-    expect(DEMO_AGENTS).toHaveLength(8);
+  it('should have 24 demo agents', () => {
+    expect(DEMO_AGENTS).toHaveLength(24);
   });
 
   it('all agents should have required fields for HOL registration', () => {

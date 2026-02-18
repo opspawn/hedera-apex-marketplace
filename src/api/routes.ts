@@ -45,7 +45,7 @@ import { HOLRegistryClient } from '../hol/hol-registry-client';
 import { HOLAutoRegister } from '../hol/hol-auto-register';
 
 // Test count managed as a constant — updated each sprint
-const TEST_COUNT = 2553;
+const TEST_COUNT = 2587;
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const VERSION = require('../../package.json').version;
 const STANDARDS = ['HCS-10', 'HCS-11', 'HCS-14', 'HCS-19', 'HCS-20', 'HCS-26'];
@@ -418,7 +418,7 @@ export function createRouter(
       res.status(501).json({ error: 'not_available', message: 'HCS-20 points tracker not configured' });
       return;
     }
-    const limit = 20;
+    const limit = 50;
     const leaderboard = points.getLeaderboard(limit);
     res.json({
       leaderboard,

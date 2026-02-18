@@ -271,7 +271,7 @@ export class MarketplaceService {
 
     const total = marketplaceAgents.length;
     const offset = criteria.offset || 0;
-    const limit = criteria.limit || 20;
+    const limit = criteria.limit || 50;
     const paged = marketplaceAgents.slice(offset, offset + limit);
 
     return { agents: paged, total };

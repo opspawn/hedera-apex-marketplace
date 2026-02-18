@@ -60,11 +60,11 @@ describe('Demo Flow with Testnet Integration', () => {
     const flow = new DemoFlow(marketplace, hcs19, hcs20);
     await flow.run();
 
-    // Each of 8 demo agents creates 3 topics (inbound, outbound, profile)
+    // Each of 24 demo agents creates 3 topics (inbound, outbound, profile)
     // Plus 1 task topic created during hire
-    // Total: 8 * 3 + 1 = 25
+    // Total: 24 * 3 + 1 = 73
     const topics = testnet.getTopics();
-    expect(topics.length).toBeGreaterThanOrEqual(24); // At least 8 agents * 3 topics
+    expect(topics.length).toBeGreaterThanOrEqual(72); // At least 24 agents * 3 topics
   });
 
   it('should submit registration messages for each agent', async () => {
@@ -72,10 +72,10 @@ describe('Demo Flow with Testnet Integration', () => {
     const flow = new DemoFlow(marketplace, hcs19, hcs20);
     await flow.run();
 
-    // Each of 8 demo agents sends 1 registration message
+    // Each of 24 demo agents sends 1 registration message
     // Plus task channel messages during hire
     const messages = testnet.getMessages();
-    expect(messages.length).toBeGreaterThanOrEqual(8);
+    expect(messages.length).toBeGreaterThanOrEqual(24);
   });
 
   it('should have testnet integration attached to HCS10Client', () => {
