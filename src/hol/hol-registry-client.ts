@@ -154,6 +154,59 @@ export interface HOLClientConfig {
   timeout?: number;
 }
 
+export interface HOLChatHistory {
+  sessionId: string;
+  messages: HOLChatMessage[];
+}
+
+export interface HOLSessionMeta {
+  sessionId: string;
+  agentUaid: string;
+  status: string;
+  createdAt: string;
+  lastMessageAt?: string;
+  messageCount?: number;
+}
+
+export interface HOLRegistrationStatus {
+  uaid: string;
+  status: string;
+  registeredAt?: string;
+  registry?: string;
+}
+
+export interface HOLCreditBalance {
+  balance: number;
+  currency: string;
+}
+
+export interface HOLVectorSearchOptions {
+  limit?: number;
+  minScore?: number;
+  protocol?: string;
+}
+
+export interface HOLVectorSearchResult {
+  agents: HOLAgent[];
+  total: number;
+  query: string;
+}
+
+export interface HOLFeedbackEntry {
+  id: string;
+  from: string;
+  rating: number;
+  comment?: string;
+  timestamp: string;
+}
+
+export interface HOLAgentFeedbackResult {
+  uaid: string;
+  feedback: HOLFeedbackEntry[];
+  averageRating: number;
+  totalCount: number;
+}
+
 // ── Client ──────────────────────────────────────────────────────────────
 
 export class HOLRegistryClient {
@@ -345,7 +398,7 @@ export class HOLRegistryClient {
   async createChatSession(agentUaid: string): Promise<HOLChatSession> {
     const data = await this.fetchJSON(`${this.baseUrl}/chat/session`, {
       method: 'POST',
-      body: { agentUaid },
+      body: { uaid: agentUaid },
       auth: true,
     });
     return {
@@ -363,7 +416,7 @@ export class HOLRegistryClient {
   async sendChatMessage(sessionId: string, content: string): Promise<HOLChatResponse> {
     const data = await this.fetchJSON(`${this.baseUrl}/chat/message`, {
       method: 'POST',
-      body: { sessionId, content },
+      body: { sessionId, message: content },
       auth: true,
     });
 
@@ -383,6 +436,130 @@ export class HOLRegistryClient {
     } : undefined;
 
     return { message: userMessage, agentResponse };
+  }
+
+  // ── Phase 1 Endpoints ──────────────────────────────────────────────
+
+  /**
+   * Get full agent profile by UAID.
+   * Free endpoint — no auth required.
+   */
+  async getAgent(uaid: string): Promise<HOLAgent> {
+    const data = await this.fetchJSON(`${this.baseUrl}/agents/${encodeURIComponent(uaid)}`);
+    return this.parseAgent(data);
+  }
+
+  /**
+   * Get conversation history for a chat session.
+   * Free endpoint — no auth required.
+   */
+  async getChatHistory(sessionId: string): Promise<HOLChatHistory> {
+    const data = await this.fetchJSON(`${this.baseUrl}/chat/session/${encodeURIComponent(sessionId)}/history`);
+    const messages = (Array.isArray(data?.messages) ? data.messages : []) as Record<string, unknown>[];
+    return {
+      sessionId,
+      messages: messages.map((m) => ({
+        id: String(m.id || ''),
+        role: (m.role || 'user') as 'user' | 'agent',
+        content: String(m.content || ''),
+        timestamp: String(m.timestamp || new Date().toISOString()),
+      })),
+    };
+  }
+
+  /**
+   * Get session metadata.
+   * Free endpoint — no auth required.
+   */
+  async getSessionMeta(sessionId: string): Promise<HOLSessionMeta> {
+    const data = await this.fetchJSON(`${this.baseUrl}/chat/session/${encodeURIComponent(sessionId)}/meta`);
+    return {
+      sessionId: (data?.sessionId || sessionId) as string,
+      agentUaid: String(data?.agentUaid || ''),
+      status: String(data?.status || 'unknown'),
+      createdAt: String(data?.createdAt || ''),
+      lastMessageAt: data?.lastMessageAt as string | undefined,
+      messageCount: data?.messageCount as number | undefined,
+    };
+  }
+
+  /**
+   * End a chat session.
+   * Free endpoint — no auth required.
+   */
+  async endChatSession(sessionId: string): Promise<void> {
+    await this.fetchJSON(`${this.baseUrl}/chat/session/${encodeURIComponent(sessionId)}`, {
+      method: 'DELETE',
+    });
+  }
+
+  /**
+   * Get registration status for a UAID.
+   * Free endpoint — no auth required.
+   */
+  async getRegistrationStatus(uaid: string): Promise<HOLRegistrationStatus> {
+    const data = await this.fetchJSON(`${this.baseUrl}/register/status/${encodeURIComponent(uaid)}`);
+    return {
+      uaid: (data?.uaid || uaid) as string,
+      status: String(data?.status || 'unknown'),
+      registeredAt: data?.registeredAt as string | undefined,
+      registry: data?.registry as string | undefined,
+    };
+  }
+
+  /**
+   * Get credit balance.
+   * Auth required — uses x-api-key header.
+   */
+  async getBalance(): Promise<HOLCreditBalance> {
+    const data = await this.fetchJSON(`${this.baseUrl}/credits/balance`, { auth: true });
+    return {
+      balance: (data?.balance || 0) as number,
+      currency: (data?.currency || 'HBAR') as string,
+    };
+  }
+
+  /**
+   * Hybrid semantic/vector search for agents.
+   * Free endpoint — no auth required.
+   */
+  async vectorSearch(query: string, options?: HOLVectorSearchOptions): Promise<HOLVectorSearchResult> {
+    const body: Record<string, unknown> = { query };
+    if (options?.limit !== undefined) body.limit = options.limit;
+    if (options?.minScore !== undefined) body.minScore = options.minScore;
+    if (options?.protocol) body.protocol = options.protocol;
+
+    const data = await this.fetchJSON(`${this.baseUrl}/search`, {
+      method: 'POST',
+      body,
+    });
+    const rawAgents = (data?.agents || data?.results || []) as Record<string, unknown>[];
+    return {
+      agents: rawAgents.map(a => this.parseAgent(a)),
+      total: (data?.total || rawAgents.length) as number,
+      query,
+    };
+  }
+
+  /**
+   * Get ERC-8004 feedback list for an agent.
+   * Free endpoint — no auth required.
+   */
+  async getAgentFeedback(uaid: string): Promise<HOLAgentFeedbackResult> {
+    const data = await this.fetchJSON(`${this.baseUrl}/agents/${encodeURIComponent(uaid)}/feedback`);
+    const feedback = (Array.isArray(data?.feedback) ? data.feedback : []) as Record<string, unknown>[];
+    return {
+      uaid,
+      feedback: feedback.map(f => ({
+        id: String(f.id || ''),
+        from: String(f.from || ''),
+        rating: (f.rating || 0) as number,
+        comment: f.comment as string | undefined,
+        timestamp: String(f.timestamp || ''),
+      })),
+      averageRating: (data?.averageRating || 0) as number,
+      totalCount: (data?.totalCount || feedback.length) as number,
+    };
   }
 
   // ── Cache ────────────────────────────────────────────────────────────

@@ -19,6 +19,12 @@ import {
   HOLChatSession,
   HOLChatResponse,
   HOLSkill,
+  HOLChatHistory,
+  HOLSessionMeta,
+  HOLRegistrationStatus,
+  HOLCreditBalance,
+  HOLVectorSearchResult,
+  HOLAgentFeedbackResult,
 } from '../../src/hol/hol-registry-client';
 
 // ── Mock fetch ─────────────────────────────────────────────────────────
@@ -650,6 +656,14 @@ describe('HOLRegistryClient.createChatSession', () => {
     const session = await client.createChatSession('uaid-3');
     expect(session.sessionId).toContain('session-');
   });
+
+  it('should send uaid (not agentUaid) in request body — Sprint 39 bugfix', async () => {
+    mockFetch.mockResolvedValueOnce(mockResponse({ sessionId: 'sess-fix' }));
+    await client.createChatSession('target-uaid');
+    const callBody = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(callBody).toHaveProperty('uaid', 'target-uaid');
+    expect(callBody).not.toHaveProperty('agentUaid');
+  });
 });
 
 describe('HOLRegistryClient.sendChatMessage', () => {
@@ -687,6 +701,356 @@ describe('HOLRegistryClient.sendChatMessage', () => {
     const result = await client.sendChatMessage('session-3', 'Test');
     expect(result.message.content).toBe('Test');
     expect(result.agentResponse).toBeUndefined();
+  });
+
+  it('should send message (not content) in request body — Sprint 39 bugfix', async () => {
+    mockFetch.mockResolvedValueOnce(mockResponse({}));
+    await client.sendChatMessage('session-fix', 'Hello API');
+    const callBody = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(callBody).toHaveProperty('message', 'Hello API');
+    expect(callBody).toHaveProperty('sessionId', 'session-fix');
+    expect(callBody).not.toHaveProperty('content');
+  });
+});
+
+// ── Phase 1: getAgent ─────────────────────────────────────────────────
+
+describe('HOLRegistryClient.getAgent', () => {
+  let client: HOLRegistryClient;
+  beforeEach(() => { client = new HOLRegistryClient(); });
+
+  it('should get full agent profile by UAID', async () => {
+    mockFetch.mockResolvedValueOnce(mockResponse({
+      id: 'agent-1', uaid: 'uaid-full', name: 'FullAgent', registry: 'hcs-10',
+      description: 'A detailed agent', trustScore: 95,
+    }));
+
+    const agent = await client.getAgent('uaid-full');
+    expect(agent.uaid).toBe('uaid-full');
+    expect(agent.name).toBe('FullAgent');
+    expect(agent.trustScore).toBe(95);
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining('/agents/uaid-full'),
+      expect.any(Object),
+    );
+  });
+
+  it('should encode UAID in URL', async () => {
+    mockFetch.mockResolvedValueOnce(mockResponse({ id: 'a1', uaid: 'ns/agent', name: 'Agent', registry: 'test' }));
+    await client.getAgent('ns/agent');
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining('/agents/ns%2Fagent'),
+      expect.any(Object),
+    );
+  });
+
+  it('should throw HOLApiError on 404', async () => {
+    mockFetch.mockResolvedValueOnce({ ok: false, status: 404, statusText: 'Not Found', text: () => Promise.resolve('Not found') });
+    await expect(client.getAgent('nonexistent')).rejects.toThrow(HOLApiError);
+  });
+
+  it('should throw HOLApiError on 500', async () => {
+    mockFetch.mockResolvedValueOnce({ ok: false, status: 500, statusText: 'Internal Server Error', text: () => Promise.resolve('Error') });
+    await expect(client.getAgent('error-uaid')).rejects.toThrow(HOLApiError);
+  });
+});
+
+// ── Phase 1: getChatHistory ──────────────────────────────────────────
+
+describe('HOLRegistryClient.getChatHistory', () => {
+  let client: HOLRegistryClient;
+  beforeEach(() => { client = new HOLRegistryClient(); });
+
+  it('should return chat history for a session', async () => {
+    mockFetch.mockResolvedValueOnce(mockResponse({
+      messages: [
+        { id: 'm1', role: 'user', content: 'Hello', timestamp: '2026-02-17T00:00:00Z' },
+        { id: 'm2', role: 'agent', content: 'Hi there!', timestamp: '2026-02-17T00:00:01Z' },
+      ],
+    }));
+
+    const history = await client.getChatHistory('session-abc');
+    expect(history.sessionId).toBe('session-abc');
+    expect(history.messages).toHaveLength(2);
+    expect(history.messages[0].role).toBe('user');
+    expect(history.messages[1].content).toBe('Hi there!');
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining('/chat/session/session-abc/history'),
+      expect.any(Object),
+    );
+  });
+
+  it('should handle empty messages array', async () => {
+    mockFetch.mockResolvedValueOnce(mockResponse({ messages: [] }));
+    const history = await client.getChatHistory('empty-session');
+    expect(history.messages).toHaveLength(0);
+  });
+
+  it('should handle missing messages field', async () => {
+    mockFetch.mockResolvedValueOnce(mockResponse({}));
+    const history = await client.getChatHistory('no-messages');
+    expect(history.messages).toHaveLength(0);
+  });
+
+  it('should throw HOLApiError on 404', async () => {
+    mockFetch.mockResolvedValueOnce({ ok: false, status: 404, statusText: 'Not Found', text: () => Promise.resolve('Not found') });
+    await expect(client.getChatHistory('bad-session')).rejects.toThrow(HOLApiError);
+  });
+});
+
+// ── Phase 1: getSessionMeta ─────────────────────────────────────────
+
+describe('HOLRegistryClient.getSessionMeta', () => {
+  let client: HOLRegistryClient;
+  beforeEach(() => { client = new HOLRegistryClient(); });
+
+  it('should return session metadata', async () => {
+    mockFetch.mockResolvedValueOnce(mockResponse({
+      sessionId: 'sess-1',
+      agentUaid: 'agent-uaid-1',
+      status: 'active',
+      createdAt: '2026-02-17T00:00:00Z',
+      lastMessageAt: '2026-02-17T01:00:00Z',
+      messageCount: 5,
+    }));
+
+    const meta = await client.getSessionMeta('sess-1');
+    expect(meta.sessionId).toBe('sess-1');
+    expect(meta.agentUaid).toBe('agent-uaid-1');
+    expect(meta.status).toBe('active');
+    expect(meta.messageCount).toBe(5);
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining('/chat/session/sess-1/meta'),
+      expect.any(Object),
+    );
+  });
+
+  it('should use sessionId param as fallback', async () => {
+    mockFetch.mockResolvedValueOnce(mockResponse({ agentUaid: 'u1', status: 'closed', createdAt: '2026-01-01' }));
+    const meta = await client.getSessionMeta('fallback-sess');
+    expect(meta.sessionId).toBe('fallback-sess');
+  });
+
+  it('should throw HOLApiError on 500', async () => {
+    mockFetch.mockResolvedValueOnce({ ok: false, status: 500, statusText: 'Internal Server Error', text: () => Promise.resolve('Error') });
+    await expect(client.getSessionMeta('error-sess')).rejects.toThrow(HOLApiError);
+  });
+});
+
+// ── Phase 1: endChatSession ─────────────────────────────────────────
+
+describe('HOLRegistryClient.endChatSession', () => {
+  let client: HOLRegistryClient;
+  beforeEach(() => { client = new HOLRegistryClient(); });
+
+  it('should end a chat session with DELETE', async () => {
+    mockFetch.mockResolvedValueOnce(mockResponse({ success: true }));
+    await client.endChatSession('sess-end');
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining('/chat/session/sess-end'),
+      expect.objectContaining({ method: 'DELETE' }),
+    );
+  });
+
+  it('should throw HOLApiError on 404', async () => {
+    mockFetch.mockResolvedValueOnce({ ok: false, status: 404, statusText: 'Not Found', text: () => Promise.resolve('Not found') });
+    await expect(client.endChatSession('bad-session')).rejects.toThrow(HOLApiError);
+  });
+
+  it('should throw HOLApiError on 500', async () => {
+    mockFetch.mockResolvedValueOnce({ ok: false, status: 500, statusText: 'Internal Server Error', text: () => Promise.resolve('Error') });
+    await expect(client.endChatSession('error-sess')).rejects.toThrow(HOLApiError);
+  });
+});
+
+// ── Phase 1: getRegistrationStatus ──────────────────────────────────
+
+describe('HOLRegistryClient.getRegistrationStatus', () => {
+  let client: HOLRegistryClient;
+  beforeEach(() => { client = new HOLRegistryClient(); });
+
+  it('should return registration status', async () => {
+    mockFetch.mockResolvedValueOnce(mockResponse({
+      uaid: 'registered-uaid',
+      status: 'active',
+      registeredAt: '2026-02-10T00:00:00Z',
+      registry: 'hcs-10',
+    }));
+
+    const status = await client.getRegistrationStatus('registered-uaid');
+    expect(status.uaid).toBe('registered-uaid');
+    expect(status.status).toBe('active');
+    expect(status.registry).toBe('hcs-10');
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining('/register/status/registered-uaid'),
+      expect.any(Object),
+    );
+  });
+
+  it('should use uaid param as fallback', async () => {
+    mockFetch.mockResolvedValueOnce(mockResponse({ status: 'pending' }));
+    const status = await client.getRegistrationStatus('fallback-uaid');
+    expect(status.uaid).toBe('fallback-uaid');
+    expect(status.status).toBe('pending');
+  });
+
+  it('should throw HOLApiError on 404', async () => {
+    mockFetch.mockResolvedValueOnce({ ok: false, status: 404, statusText: 'Not Found', text: () => Promise.resolve('Not found') });
+    await expect(client.getRegistrationStatus('bad-uaid')).rejects.toThrow(HOLApiError);
+  });
+
+  it('should throw HOLApiError on 500', async () => {
+    mockFetch.mockResolvedValueOnce({ ok: false, status: 500, statusText: 'Internal Server Error', text: () => Promise.resolve('Error') });
+    await expect(client.getRegistrationStatus('error-uaid')).rejects.toThrow(HOLApiError);
+  });
+});
+
+// ── Phase 1: getBalance ─────────────────────────────────────────────
+
+describe('HOLRegistryClient.getBalance', () => {
+  it('should return credit balance with auth', async () => {
+    const client = new HOLRegistryClient({ apiKey: 'balance-key' });
+    mockFetch.mockResolvedValueOnce(mockResponse({ balance: 5000, currency: 'HBAR' }));
+
+    const bal = await client.getBalance();
+    expect(bal.balance).toBe(5000);
+    expect(bal.currency).toBe('HBAR');
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining('/credits/balance'),
+      expect.objectContaining({
+        headers: expect.objectContaining({ 'x-api-key': 'balance-key' }),
+      }),
+    );
+  });
+
+  it('should default balance to 0 and currency to HBAR', async () => {
+    const client = new HOLRegistryClient({ apiKey: 'key' });
+    mockFetch.mockResolvedValueOnce(mockResponse({}));
+    const bal = await client.getBalance();
+    expect(bal.balance).toBe(0);
+    expect(bal.currency).toBe('HBAR');
+  });
+
+  it('should throw HOLApiError on 401', async () => {
+    const client = new HOLRegistryClient();
+    mockFetch.mockResolvedValueOnce({ ok: false, status: 401, statusText: 'Unauthorized', text: () => Promise.resolve('No key') });
+    await expect(client.getBalance()).rejects.toThrow(HOLApiError);
+  });
+
+  it('should throw HOLApiError on 500', async () => {
+    const client = new HOLRegistryClient({ apiKey: 'key' });
+    mockFetch.mockResolvedValueOnce({ ok: false, status: 500, statusText: 'Internal Server Error', text: () => Promise.resolve('Error') });
+    await expect(client.getBalance()).rejects.toThrow(HOLApiError);
+  });
+});
+
+// ── Phase 1: vectorSearch ───────────────────────────────────────────
+
+describe('HOLRegistryClient.vectorSearch', () => {
+  let client: HOLRegistryClient;
+  beforeEach(() => { client = new HOLRegistryClient(); });
+
+  it('should perform vector search with POST', async () => {
+    mockFetch.mockResolvedValueOnce(mockResponse({
+      agents: [{ id: 'v1', uaid: 'vec-1', name: 'VectorAgent', registry: 'test', trustScore: 90 }],
+      total: 1,
+    }));
+
+    const result = await client.vectorSearch('find smart agents');
+    expect(result.agents).toHaveLength(1);
+    expect(result.agents[0].name).toBe('VectorAgent');
+    expect(result.total).toBe(1);
+    expect(result.query).toBe('find smart agents');
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining('/search'),
+      expect.objectContaining({ method: 'POST' }),
+    );
+  });
+
+  it('should pass options in request body', async () => {
+    mockFetch.mockResolvedValueOnce(mockResponse({ agents: [], total: 0 }));
+    await client.vectorSearch('test', { limit: 5, minScore: 0.8, protocol: 'a2a' });
+    const callBody = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(callBody.query).toBe('test');
+    expect(callBody.limit).toBe(5);
+    expect(callBody.minScore).toBe(0.8);
+    expect(callBody.protocol).toBe('a2a');
+  });
+
+  it('should handle results array format', async () => {
+    mockFetch.mockResolvedValueOnce(mockResponse({
+      results: [{ id: 'r1', uaid: 'res-1', name: 'ResultAgent', registry: 'test' }],
+      total: 1,
+    }));
+    const result = await client.vectorSearch('search');
+    expect(result.agents).toHaveLength(1);
+  });
+
+  it('should handle empty results', async () => {
+    mockFetch.mockResolvedValueOnce(mockResponse({ agents: [], total: 0 }));
+    const result = await client.vectorSearch('nothing');
+    expect(result.agents).toHaveLength(0);
+    expect(result.total).toBe(0);
+  });
+
+  it('should throw HOLApiError on 500', async () => {
+    mockFetch.mockResolvedValueOnce({ ok: false, status: 500, statusText: 'Internal Server Error', text: () => Promise.resolve('Error') });
+    await expect(client.vectorSearch('error')).rejects.toThrow(HOLApiError);
+  });
+});
+
+// ── Phase 1: getAgentFeedback ───────────────────────────────────────
+
+describe('HOLRegistryClient.getAgentFeedback', () => {
+  let client: HOLRegistryClient;
+  beforeEach(() => { client = new HOLRegistryClient(); });
+
+  it('should return agent feedback list', async () => {
+    mockFetch.mockResolvedValueOnce(mockResponse({
+      feedback: [
+        { id: 'f1', from: 'user-1', rating: 5, comment: 'Great agent!', timestamp: '2026-02-17T00:00:00Z' },
+        { id: 'f2', from: 'user-2', rating: 4, timestamp: '2026-02-17T01:00:00Z' },
+      ],
+      averageRating: 4.5,
+      totalCount: 2,
+    }));
+
+    const result = await client.getAgentFeedback('agent-uaid');
+    expect(result.uaid).toBe('agent-uaid');
+    expect(result.feedback).toHaveLength(2);
+    expect(result.feedback[0].rating).toBe(5);
+    expect(result.feedback[0].comment).toBe('Great agent!');
+    expect(result.feedback[1].comment).toBeUndefined();
+    expect(result.averageRating).toBe(4.5);
+    expect(result.totalCount).toBe(2);
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining('/agents/agent-uaid/feedback'),
+      expect.any(Object),
+    );
+  });
+
+  it('should handle empty feedback', async () => {
+    mockFetch.mockResolvedValueOnce(mockResponse({ feedback: [], averageRating: 0, totalCount: 0 }));
+    const result = await client.getAgentFeedback('no-feedback');
+    expect(result.feedback).toHaveLength(0);
+    expect(result.averageRating).toBe(0);
+  });
+
+  it('should handle missing feedback field', async () => {
+    mockFetch.mockResolvedValueOnce(mockResponse({}));
+    const result = await client.getAgentFeedback('missing');
+    expect(result.feedback).toHaveLength(0);
+    expect(result.averageRating).toBe(0);
+  });
+
+  it('should throw HOLApiError on 404', async () => {
+    mockFetch.mockResolvedValueOnce({ ok: false, status: 404, statusText: 'Not Found', text: () => Promise.resolve('Not found') });
+    await expect(client.getAgentFeedback('bad-uaid')).rejects.toThrow(HOLApiError);
+  });
+
+  it('should throw HOLApiError on 500', async () => {
+    mockFetch.mockResolvedValueOnce({ ok: false, status: 500, statusText: 'Internal Server Error', text: () => Promise.resolve('Error') });
+    await expect(client.getAgentFeedback('error-uaid')).rejects.toThrow(HOLApiError);
   });
 });
 

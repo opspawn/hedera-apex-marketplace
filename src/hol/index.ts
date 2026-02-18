@@ -66,6 +66,14 @@ export type {
   HOLChatResponse,
   HOLSkill,
   HOLClientConfig,
+  HOLChatHistory,
+  HOLSessionMeta,
+  HOLRegistrationStatus,
+  HOLCreditBalance,
+  HOLVectorSearchOptions,
+  HOLVectorSearchResult,
+  HOLFeedbackEntry,
+  HOLAgentFeedbackResult,
 } from './hol-registry-client';
 
 export { HOLAutoRegister } from './hol-auto-register';
