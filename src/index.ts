@@ -163,7 +163,7 @@ export function createApp() {
  * Seed demo agents and start the server.
  */
 async function main() {
-  const { app, config, marketplace, hcs19, hcs20, connectionHandler, holAutoRegister } = createApp();
+  const { app, config, marketplace, hcs19, hcs20, connectionHandler, holAutoRegister, analyticsTracker } = createApp();
 
   // Seed demo agents
   const seedResult = await seedDemoAgents(marketplace, hcs19, hcs20);
@@ -172,6 +172,15 @@ async function main() {
     for (const a of seedResult.agents) {
       console.log(`  ${a.name} (${a.agent_id}) — reputation: ${a.reputation}, points: ${a.points}`);
     }
+  }
+
+  // Initialize analytics with seed data
+  if (analyticsTracker && seedResult.seeded > 0) {
+    analyticsTracker.setInitialState(seedResult.seeded, 0, 0, 0);
+    for (const a of seedResult.agents) {
+      analyticsTracker.recordAgentRegistration(['hcs-10', 'hcs-11', 'hcs-14', 'hcs-19', 'hcs-26']);
+    }
+    analyticsTracker.takeSnapshot();
   }
 
   // Auto-register agents in HOL Registry Broker (background, non-blocking)

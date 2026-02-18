@@ -300,6 +300,7 @@ export function createRouter(
       }
 
       const consent = await privacy.grantConsent(request);
+      if (analyticsTracker) analyticsTracker.recordConsent();
       res.status(201).json(consent);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Unknown error';
@@ -506,6 +507,11 @@ export function createRouter(
         }
       }
 
+      // Track analytics
+      if (analyticsTracker) {
+        analyticsTracker.recordAgentRegistration(registration.protocols || []);
+      }
+
       res.status(201).json(result);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Unknown error';
@@ -570,6 +576,9 @@ export function createRouter(
           fromAgent: clientId,
         });
       }
+
+      // Track analytics
+      if (analyticsTracker) analyticsTracker.recordTask();
 
       const statusCode = result.status === 'failed' ? 422 : 201;
       res.status(statusCode).json(result);
@@ -921,6 +930,15 @@ export function createRouter(
       const completedSteps = steps.filter(s => s.status === 'completed').length;
       const failedSteps = steps.filter(s => s.status === 'failed').length;
 
+      // Track analytics for demo flow
+      if (analyticsTracker) {
+        analyticsTracker.recordDemoRun(failedSteps === 0);
+        analyticsTracker.recordAgentRegistration(['hcs-10', 'hcs-19', 'hcs-26']);
+        analyticsTracker.recordTask();
+        analyticsTracker.recordConsent();
+        analyticsTracker.recordConnection();
+      }
+
       res.json({
         status: failedSteps === 0 ? 'completed' : completedSteps > 0 ? 'partial' : 'failed',
         steps,
@@ -1208,6 +1226,15 @@ export function createRouter(
 
     const overallStatus = failedSteps === 0 ? 'completed' : completedSteps > 0 ? 'partial' : 'failed';
     const statusCode = overallStatus === 'failed' ? 500 : 200;
+
+    // Track analytics for full-flow demo
+    if (analyticsTracker) {
+      analyticsTracker.recordDemoRun(failedSteps === 0);
+      analyticsTracker.recordAgentRegistration(['hcs-10', 'hcs-19', 'hcs-26', 'erc-8004']);
+      analyticsTracker.recordTask();
+      analyticsTracker.recordConsent();
+      analyticsTracker.recordConnection();
+    }
 
     res.status(statusCode).json({
       status: overallStatus,
