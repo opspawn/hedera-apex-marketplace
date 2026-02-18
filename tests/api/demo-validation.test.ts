@@ -134,9 +134,9 @@ describe('Demo API Validation', () => {
       expect(res.body.test_count).toBeGreaterThanOrEqual(2300);
     });
 
-    it('should list 6 HCS standards', async () => {
+    it('should list 10 HCS standards', async () => {
       const res = await request(app, 'GET', '/health');
-      expect(res.body.standards).toEqual(['HCS-10', 'HCS-11', 'HCS-14', 'HCS-19', 'HCS-20', 'HCS-26']);
+      expect(res.body.standards).toEqual(['HCS-1', 'HCS-2', 'HCS-3', 'HCS-5', 'HCS-10', 'HCS-11', 'HCS-14', 'HCS-19', 'HCS-20', 'HCS-26']);
     });
 
     it('should include all endpoint paths', async () => {

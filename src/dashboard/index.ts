@@ -1103,6 +1103,32 @@ function getDashboardHTML(): string {
         </div>
       </div>
 
+      <!-- Reachability Test Results -->
+      <div style="background:#111827; border-radius:12px; padding:1.5rem; border:1px solid #1e2a4a; margin-top:1.5rem;">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem;">
+          <h3 style="color:#fff; font-size:1rem; margin:0;">Protocol Health Check</h3>
+          <button onclick="runReachabilityTest()" id="reach-test-btn" style="padding:0.4rem 1rem; background:linear-gradient(135deg,#0088cc,#00aaff); border:none; border-radius:8px; color:#fff; font-size:0.8rem; cursor:pointer; font-weight:600;">Run Test</button>
+        </div>
+        <div id="reach-test-results" style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:1rem;">
+          <div style="background:#0d1528; border-radius:8px; padding:1rem; border:1px solid #1e2a4a; text-align:center;">
+            <div style="font-size:1.5rem; margin-bottom:0.4rem;" id="reach-test-hcs10-icon">&#x23F3;</div>
+            <div style="color:#fff; font-size:0.85rem; font-weight:600;">HCS-10</div>
+            <div id="reach-test-hcs10-detail" style="color:#6a7a9a; font-size:0.75rem; margin-top:0.3rem;">Not tested</div>
+          </div>
+          <div style="background:#0d1528; border-radius:8px; padding:1rem; border:1px solid #1e2a4a; text-align:center;">
+            <div style="font-size:1.5rem; margin-bottom:0.4rem;" id="reach-test-mcp-icon">&#x23F3;</div>
+            <div style="color:#fff; font-size:0.85rem; font-weight:600;">MCP</div>
+            <div id="reach-test-mcp-detail" style="color:#6a7a9a; font-size:0.75rem; margin-top:0.3rem;">Not tested</div>
+          </div>
+          <div style="background:#0d1528; border-radius:8px; padding:1rem; border:1px solid #1e2a4a; text-align:center;">
+            <div style="font-size:1.5rem; margin-bottom:0.4rem;" id="reach-test-a2a-icon">&#x23F3;</div>
+            <div style="color:#fff; font-size:0.85rem; font-weight:600;">A2A</div>
+            <div id="reach-test-a2a-detail" style="color:#6a7a9a; font-size:0.75rem; margin-top:0.3rem;">Not tested</div>
+          </div>
+        </div>
+        <div id="reach-test-summary" style="margin-top:0.75rem; text-align:center; color:#6a7a9a; font-size:0.8rem;"></div>
+      </div>
+
       <!-- Recent Inbound Messages -->
       <div style="background:#111827; border-radius:12px; padding:1.5rem; border:1px solid #1e2a4a; margin-top:1.5rem;">
         <h3 style="color:#fff; margin-bottom:1rem; font-size:1rem;">Recent Inbound Activity</h3>
@@ -2057,6 +2083,39 @@ function getDashboardHTML(): string {
       } catch (e) {
         document.getElementById('reach-inbound-log').innerHTML = '<div style="color:#ff4444; font-size:0.85rem;">Error loading reachability data: ' + e.message + '</div>';
       }
+    }
+
+    async function runReachabilityTest() {
+      var btn = document.getElementById('reach-test-btn');
+      btn.disabled = true;
+      btn.textContent = 'Testing...';
+      // Reset icons
+      ['hcs10', 'mcp', 'a2a'].forEach(function(p) {
+        document.getElementById('reach-test-' + p + '-icon').textContent = '\\u23F3';
+        document.getElementById('reach-test-' + p + '-detail').textContent = 'Testing...';
+        document.getElementById('reach-test-' + p + '-detail').style.color = '#6a7a9a';
+      });
+      try {
+        var resp = await fetch('/api/reachability/test');
+        var data = await resp.json();
+        var tests = data.tests || {};
+        ['hcs10', 'mcp', 'a2a'].forEach(function(p) {
+          var t = tests[p];
+          var iconEl = document.getElementById('reach-test-' + p + '-icon');
+          var detailEl = document.getElementById('reach-test-' + p + '-detail');
+          if (t) {
+            iconEl.textContent = t.status === 'pass' ? '\\u2705' : t.status === 'warn' ? '\\u26A0\\uFE0F' : '\\u274C';
+            detailEl.textContent = t.details.substring(0, 80);
+            detailEl.style.color = t.status === 'pass' ? '#00c853' : t.status === 'warn' ? '#ffaa00' : '#ff4444';
+          }
+        });
+        var sum = data.summary || {};
+        document.getElementById('reach-test-summary').innerHTML = '<span style="color:' + (data.status === 'healthy' ? '#00c853' : data.status === 'partial' ? '#ffaa00' : '#ff4444') + '; font-weight:600;">' + data.status.toUpperCase() + '</span> &mdash; ' + sum.passing + '/' + sum.total + ' protocols passing (' + (sum.latencyMs || (tests.hcs10 ? tests.hcs10.latencyMs : 0)) + 'ms)';
+      } catch (e) {
+        document.getElementById('reach-test-summary').innerHTML = '<span style="color:#ff4444;">Test failed: ' + e.message + '</span>';
+      }
+      btn.disabled = false;
+      btn.textContent = 'Run Test';
     }
 
     async function loadDualIdentity() {

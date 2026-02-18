@@ -70,6 +70,108 @@ function getApiKeyConfig(): { apiKey: string; provider: 'openai' | 'anthropic' }
   return null;
 }
 
+// ---------------------------------------------------------------------------
+// Smart rule-based fallback (no LLM needed)
+// ---------------------------------------------------------------------------
+
+const HCS_STANDARDS = [
+  { id: 'HCS-1', name: 'Topic Reference Standard', description: 'Standard for referencing HCS topics across protocols' },
+  { id: 'HCS-2', name: 'Token Metadata', description: 'On-chain metadata for fungible and non-fungible tokens' },
+  { id: 'HCS-3', name: 'Recursion Standard', description: 'Recursive topic references for composable data structures' },
+  { id: 'HCS-5', name: 'Topic Auditing', description: 'Audit trails and compliance logging via HCS topics' },
+  { id: 'HCS-10', name: 'Agent Communication', description: 'OpenConversation standard for agent-to-agent messaging via HCS topics' },
+  { id: 'HCS-11', name: 'Agent Profile', description: 'On-chain agent profiles with capabilities, bio, and metadata' },
+  { id: 'HCS-14', name: 'Agent Identity & Verification', description: 'DID-based identity verification for agents' },
+  { id: 'HCS-19', name: 'Privacy & Consent', description: 'Privacy consent management for data sharing between agents' },
+  { id: 'HCS-20', name: 'Points & Reputation', description: 'On-chain reputation points tracking and leaderboards' },
+  { id: 'HCS-26', name: 'Skill Publishing', description: 'Skill manifest publishing and discovery for agent capabilities' },
+];
+
+interface SmartFallbackOptions {
+  baseUrl?: string;
+}
+
+export function getSmartFallbackResponse(message: string, opts?: SmartFallbackOptions): { content: string; intent: string; queryEndpoint?: string } {
+  const lower = message.toLowerCase().trim();
+  const baseUrl = opts?.baseUrl || '';
+
+  // Trust scores (check BEFORE list_agents since both mention "agent")
+  if ((/\b(trust|score|reputation|rating)\b/i.test(lower) &&
+      /\b(show|get|what|display|dashboard|view|have)\b/i.test(lower)) ||
+      /\bshow\b.*\btrust\b/i.test(lower)) {
+    return {
+      intent: 'trust_scores',
+      queryEndpoint: `${baseUrl}/api/analytics/charts`,
+      content: `**Trust Scores** are a key feature of the Hedera Agent Marketplace!\n\nEach agent has a trust score from 0-100, calculated from:\n- **Task completion rate** — How reliably they complete work\n- **Response quality** — Ratings from other agents and users\n- **On-chain activity** — HCS-20 reputation points\n- **Identity verification** — HCS-14 DID verification status\n- **ERC-8004 dual identity** — Cross-chain identity linking\n\n**Trust Levels:**\n- 🆕 **New** (0-20) — Recently registered\n- 📘 **Basic** (21-40) — Some activity\n- ✅ **Trusted** (41-60) — Reliable track record\n- 🏅 **Verified** (61-80) — Strong reputation\n- 🏆 **Elite** (81-100) — Top-tier agents\n\nView the trust dashboard:\n- \`GET /api/agents/:id/trust\` — Individual agent trust\n- \`GET /api/analytics/charts\` — Trust distribution dashboard\n- \`GET /api/reachability\` — Agent connectivity status`,
+    };
+  }
+
+  // What standards do you support? (check BEFORE list_agents)
+  if (/\b(standards?|hcs|protocols?|specifications?|specs?)\b/i.test(lower) &&
+      /\b(support|use|implement|which|what|list)\b/i.test(lower)) {
+    const standardsList = HCS_STANDARDS
+      .map(s => `- **${s.id}**: ${s.name} — ${s.description}`)
+      .join('\n');
+    return {
+      intent: 'standards',
+      content: `The Hedera Agent Marketplace implements **10 HCS standards** plus multi-protocol interop:\n\n**Hedera Consensus Service Standards:**\n${standardsList}\n\n**Additional Protocols:**\n- **A2A** — Google Agent-to-Agent protocol for task delegation\n- **MCP** — Model Context Protocol with 5 marketplace tools\n- **ERC-8004** — Cross-chain dual identity (Hedera ↔ EVM)\n\nAll agent data is anchored to Hedera Consensus Service topics for verifiable, tamper-proof records.`,
+    };
+  }
+
+  // How to hire an agent? (check BEFORE list_agents)
+  if (/\b(how|steps?|process|guide)\b.*\b(hire|book|use|engage|employ)\b/i.test(lower) ||
+      /\b(hire|book|engage|employ)\b.*\b(agent|how|guide|steps?)\b/i.test(lower)) {
+    return {
+      intent: 'hire_guide',
+      content: `Here's how to **hire an agent** on the Hedera Agent Marketplace:\n\n**Step 1: Discover Agents**\nBrowse available agents on the dashboard or use:\n\`GET /api/marketplace/discover?q=data+analysis\`\n\n**Step 2: Review Profiles**\nCheck each agent's capabilities, trust score, and reputation:\n\`GET /api/marketplace/agent/:id\`\n\n**Step 3: Hire the Agent**\nSend a hire request with your task description:\n\`POST /api/marketplace/hire\`\n\`\`\`json\n{ "agent_id": "agent-001", "task": "Analyze my dataset" }\n\`\`\`\n\n**Step 4: Communicate**\nOnce hired, communicate via HCS-10 connections or the chat relay:\n- "Connect to agent 0.0.12345"\n- "Send message to the analyst"\n\n**Step 5: Rate & Review**\nAfter the task is complete, leave feedback to update the agent's reputation score.\n\nReputation points (HCS-20) are awarded for successful interactions!`,
+    };
+  }
+
+  // What agents are available?
+  if (/\b(what|which|list|show|available|all)\b.*\bagent/i.test(lower) ||
+      /\bagent\b.*\b(available|list|show)\b/i.test(lower)) {
+    return {
+      intent: 'list_agents',
+      queryEndpoint: `${baseUrl}/api/agents`,
+      content: `I can look up the available agents for you! Here's what our marketplace offers:\n\nThe Hedera Agent Marketplace hosts AI agents that you can discover, hire, and interact with. Each agent is registered on-chain using HCS-10/11/14 standards.\n\nTo see live agents, visit the **Marketplace Dashboard** or use the API:\n- \`GET /api/agents\` — List all registered agents\n- \`GET /api/marketplace/discover\` — Discovery with filtering\n\nYou can also search for specific capabilities like "data analysis" or "code review".`,
+    };
+  }
+
+  // What is this marketplace?
+  if (/\b(what is|describe|about|explain)\b.*\b(this|the)?\s*(marketplace|platform|service)\b/i.test(lower) ||
+      /\bmarketplace\b.*\b(about|what|describe)\b/i.test(lower) ||
+      /\bhello\b|\bhi\b|\bhey\b|\bhelp\b/i.test(lower)) {
+    return {
+      intent: 'about_marketplace',
+      content: `Welcome to the **Hedera Agent Marketplace**! 🏪\n\nThis is a decentralized marketplace for AI agents built on the **Hedera Hashgraph** network. Here's what makes it special:\n\n**Core Features:**\n- **Agent Registration** — Register AI agents with on-chain identity (HCS-11, HCS-14)\n- **Agent Discovery** — Find agents by capability, reputation, and trust scores\n- **Secure Communication** — Peer-to-peer messaging via HCS-10 topics\n- **Privacy Consent** — GDPR-compliant data sharing (HCS-19)\n- **Reputation System** — On-chain points and trust scores (HCS-20)\n- **Skill Publishing** — Publish and discover agent skills (HCS-26)\n\n**Multi-Protocol Support:**\n- **HCS-10** — Hedera Consensus Service for agent communication\n- **A2A** — Google Agent-to-Agent protocol\n- **MCP** — Model Context Protocol (5 tools)\n\nTry asking me "What agents are available?" or "How do I hire an agent?"`,
+    };
+  }
+
+  // Reachability / connectivity
+  if ((/\breach/i.test(lower) || /\b(connect|protocol|endpoint|api|status)\b/i.test(lower)) &&
+      /\b(check|test|verify|how|available)\b/i.test(lower)) {
+    return {
+      intent: 'reachability',
+      queryEndpoint: `${baseUrl}/api/reachability/test`,
+      content: `The marketplace is reachable via **3 protocols**:\n\n1. **HCS-10** (Hedera Consensus Service)\n   - Agent-to-agent messaging via HCS topics\n   - Auto-accept connections enabled\n   - Endpoint: \`/api/connections\`\n\n2. **A2A** (Agent-to-Agent Protocol)\n   - Discovery card: \`/.well-known/agent.json\`\n   - Task delegation: \`/api/a2a/tasks\`\n\n3. **MCP** (Model Context Protocol)\n   - 5 marketplace tools available\n   - Endpoint: \`/mcp\`\n   - Tools: \`/api/mcp/tools\`\n\nCheck reachability: \`GET /api/reachability/test\``,
+    };
+  }
+
+  // Registration / sign up
+  if (/\b(register|sign ?up|create)\b.*\b(agent|account|profile)\b/i.test(lower)) {
+    return {
+      intent: 'register_guide',
+      content: `To **register a new agent** on the Hedera Agent Marketplace:\n\n**Quick Registration (API):**\n\`\`\`bash\nPOST /api/marketplace/register\n{\n  "name": "My AI Agent",\n  "description": "A data analysis specialist",\n  "endpoint": "https://my-agent.example.com",\n  "skills": ["data-analysis", "visualization"],\n  "tags": ["ai", "analytics"]\n}\n\`\`\`\n\n**What happens on registration:**\n1. Agent profile created (HCS-11)\n2. Identity verified (HCS-14)\n3. Listed in the marketplace for discovery\n4. Registered in HOL Universal Agent Index\n5. Initial trust score assigned\n\n**AWS KMS Registration (Enterprise):**\n\`POST /api/kms/register-agent\` — Register with hardware-backed keys\n\nAfter registration, your agent is discoverable via HCS-10, A2A, and MCP protocols.`,
+    };
+  }
+
+  // Default — helpful response with suggestions
+  return {
+    intent: 'general',
+    content: `I'm the **Hedera Agent Marketplace** assistant! I can help you with:\n\n💡 **Try asking:**\n- "What agents are available?" — Browse registered agents\n- "What is this marketplace?" — Learn about the platform\n- "How do I hire an agent?" — Step-by-step hiring guide\n- "Show me trust scores" — View agent reputation data\n- "What standards do you support?" — See all 10 HCS standards\n- "How do I register an agent?" — Registration guide\n- "Check reachability" — Verify protocol connectivity\n\n**Quick Links:**\n- [Marketplace Dashboard](/)\n- [Agent Chat](/chat)\n- [API Health](/health)\n- [Agent Card](/.well-known/agent.json)`,
+  };
+}
+
 async function getAgent(): Promise<any> {
   if (agentInstance) return agentInstance;
   if (agentError) throw new Error(agentError);
@@ -113,6 +215,8 @@ async function getAgent(): Promise<any> {
 
 export interface ChatRouterOptions {
   chatAgentConfig?: ChatAgentConfig;
+  getAgentCount?: () => number;
+  getAgentList?: () => Array<{ name: string; agent_id: string; description?: string; trust_score?: number }>;
 }
 
 let chatAgentInstance: ChatAgent | null = null;
@@ -177,18 +281,19 @@ export function createChatRouter(options?: ChatRouterOptions): Router {
     session.messages.push(userMsg);
     session.updatedAt = new Date().toISOString();
 
-    // Check API key
+    // Check API key — use smart fallback if no LLM configured
     const keyConfig = getApiKeyConfig();
     if (!keyConfig) {
-      const noKeyMsg: ChatMessage = {
+      const fallback = getSmartFallbackResponse(message.trim());
+      const fallbackMsg: ChatMessage = {
         id: uuid(),
         role: 'agent',
-        content: '⚠️ **API key not configured.**\n\nTo enable the conversational agent, set one of these environment variables:\n\n- `OPENAI_API_KEY` — for OpenAI models (GPT-4o)\n- `ANTHROPIC_API_KEY` — for Anthropic models (Claude)\n\nAlso configure your Hedera credentials:\n- `HEDERA_ACCOUNT_ID` — your Hedera account (e.g., 0.0.12345)\n- `HEDERA_PRIVATE_KEY` — your Hedera private key\n\nRestart the server after setting these variables.',
+        content: fallback.content,
         timestamp: new Date().toISOString(),
       };
-      session.messages.push(noKeyMsg);
+      session.messages.push(fallbackMsg);
       session.updatedAt = new Date().toISOString();
-      res.json({ sessionId: session.id, userMessage: userMsg, agentMessage: noKeyMsg });
+      res.json({ sessionId: session.id, userMessage: userMsg, agentMessage: fallbackMsg, intent: fallback.intent, fallback: true });
       return;
     }
 
@@ -280,6 +385,99 @@ export function createChatRouter(options?: ChatRouterOptions): Router {
       const errMsg = err instanceof Error ? err.message : 'Unknown error';
       res.status(500).json({ error: 'chat_agent_failed', message: errMsg });
     }
+  });
+
+  // --- POST /api/chat/smart — Smart endpoint that enriches fallback with live data ---
+  router.post('/api/chat/smart', async (req: Request, res: Response) => {
+    const { message, sessionId } = req.body as { message?: string; sessionId?: string };
+
+    if (!message || typeof message !== 'string' || !message.trim()) {
+      res.status(400).json({ error: 'validation_error', message: 'Message is required' });
+      return;
+    }
+
+    const session = getOrCreateSession(sessionId);
+    const userMsg: ChatMessage = {
+      id: uuid(),
+      role: 'user',
+      content: message.trim(),
+      timestamp: new Date().toISOString(),
+    };
+    session.messages.push(userMsg);
+    session.updatedAt = new Date().toISOString();
+
+    // First try the ChatAgent (tool-calling) if available
+    const agent = getChatAgent(options);
+    if (agent) {
+      try {
+        const sid = session.id;
+        const result: AgentChatResponse = await agent.processMessage(message.trim(), sid);
+        const agentMsg: ChatMessage = {
+          id: uuid(),
+          role: 'agent',
+          content: result.response,
+          timestamp: new Date().toISOString(),
+          toolCalls: result.actions.map(a => ({
+            name: a.tool,
+            args: a.args,
+            output: a.result.message,
+          })),
+        };
+        session.messages.push(agentMsg);
+        session.updatedAt = new Date().toISOString();
+        res.json({
+          sessionId: session.id,
+          userMessage: userMsg,
+          agentMessage: agentMsg,
+          source: 'chat_agent',
+          actions: result.actions,
+        });
+        return;
+      } catch {
+        // Fall through to smart fallback
+      }
+    }
+
+    // Smart fallback with live data enrichment
+    const fallback = getSmartFallbackResponse(message.trim());
+    let enrichedContent = fallback.content;
+
+    // Enrich with live agent list data if applicable
+    if (fallback.intent === 'list_agents' && options?.getAgentList) {
+      const agents = options.getAgentList();
+      if (agents.length > 0) {
+        const agentList = agents.slice(0, 10).map((a, i) =>
+          `${i + 1}. **${a.name}** (${a.agent_id})${a.description ? ` — ${a.description}` : ''}${a.trust_score !== undefined ? ` [Trust: ${a.trust_score}]` : ''}`
+        ).join('\n');
+        enrichedContent += `\n\n**Currently registered agents (${agents.length} total):**\n${agentList}`;
+      }
+    }
+
+    // Enrich with live agent count
+    if (fallback.intent === 'about_marketplace' && options?.getAgentCount) {
+      const count = options.getAgentCount();
+      if (count > 0) {
+        enrichedContent += `\n\n**Currently hosting ${count} registered agents.**`;
+      }
+    }
+
+    const agentMsg: ChatMessage = {
+      id: uuid(),
+      role: 'agent',
+      content: enrichedContent,
+      timestamp: new Date().toISOString(),
+    };
+    session.messages.push(agentMsg);
+    session.updatedAt = new Date().toISOString();
+
+    res.json({
+      sessionId: session.id,
+      userMessage: userMsg,
+      agentMessage: agentMsg,
+      source: 'smart_fallback',
+      intent: fallback.intent,
+      fallback: true,
+    });
   });
 
   // --- GET /api/chat/agent/tools — List available chat agent tools ---
@@ -473,27 +671,27 @@ function getChatHTML(): string {
       <div class="suggestions" id="suggestions">
         <div class="suggestion" onclick="sendSuggestion(this)">
           <div class="suggestion-label">Discover</div>
-          Find me an AI agent for data analysis
+          What agents are available?
         </div>
         <div class="suggestion" onclick="sendSuggestion(this)">
-          <div class="suggestion-label">Register</div>
-          Register a new agent
+          <div class="suggestion-label">About</div>
+          What is this marketplace?
+        </div>
+        <div class="suggestion" onclick="sendSuggestion(this)">
+          <div class="suggestion-label">Guide</div>
+          How do I hire an agent?
         </div>
         <div class="suggestion" onclick="sendSuggestion(this)">
           <div class="suggestion-label">Trust</div>
-          Show trust scores for available agents
+          Show me trust scores
         </div>
         <div class="suggestion" onclick="sendSuggestion(this)">
-          <div class="suggestion-label">Search</div>
-          Search for code review agents
+          <div class="suggestion-label">Standards</div>
+          What standards do you support?
         </div>
         <div class="suggestion" onclick="sendSuggestion(this)">
-          <div class="suggestion-label">Skills</div>
-          Show available agent skills
-        </div>
-        <div class="suggestion" onclick="sendSuggestion(this)">
-          <div class="suggestion-label">Connect</div>
-          Connect to agent 0.0.12345
+          <div class="suggestion-label">Status</div>
+          Check protocol reachability
         </div>
       </div>
     </div>
@@ -566,12 +764,12 @@ function getChatHTML(): string {
         '<h2>Hedera Agent Marketplace Chat</h2>' +
         '<p>Chat with the marketplace agent using natural language &mdash; register agents, discover capabilities, connect via HCS-10, and exchange messages.</p>' +
         '<div class="suggestions" id="suggestions">' +
-          '<div class="suggestion" onclick="sendSuggestion(this)"><div class="suggestion-label">Discover</div>Find me an AI agent for data analysis</div>' +
-          '<div class="suggestion" onclick="sendSuggestion(this)"><div class="suggestion-label">Register</div>Register a new agent</div>' +
-          '<div class="suggestion" onclick="sendSuggestion(this)"><div class="suggestion-label">Trust</div>Show trust scores for available agents</div>' +
-          '<div class="suggestion" onclick="sendSuggestion(this)"><div class="suggestion-label">Search</div>Search for code review agents</div>' +
-          '<div class="suggestion" onclick="sendSuggestion(this)"><div class="suggestion-label">Skills</div>Show available agent skills</div>' +
-          '<div class="suggestion" onclick="sendSuggestion(this)"><div class="suggestion-label">Connect</div>Connect to agent 0.0.12345</div>' +
+          '<div class="suggestion" onclick="sendSuggestion(this)"><div class="suggestion-label">Discover</div>What agents are available?</div>' +
+          '<div class="suggestion" onclick="sendSuggestion(this)"><div class="suggestion-label">About</div>What is this marketplace?</div>' +
+          '<div class="suggestion" onclick="sendSuggestion(this)"><div class="suggestion-label">Guide</div>How do I hire an agent?</div>' +
+          '<div class="suggestion" onclick="sendSuggestion(this)"><div class="suggestion-label">Trust</div>Show me trust scores</div>' +
+          '<div class="suggestion" onclick="sendSuggestion(this)"><div class="suggestion-label">Standards</div>What standards do you support?</div>' +
+          '<div class="suggestion" onclick="sendSuggestion(this)"><div class="suggestion-label">Status</div>Check protocol reachability</div>' +
         '</div></div>';
     }
 
@@ -606,7 +804,7 @@ function getChatHTML(): string {
       // Show typing indicator
       var typingId = showTyping();
 
-      fetch('/api/chat/agent', {
+      fetch('/api/chat/smart', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionId: sessionId, message: message }),
@@ -615,7 +813,8 @@ function getChatHTML(): string {
         .then(function(data) {
           removeTyping(typingId);
           if (data.sessionId) sessionId = data.sessionId;
-          if (data.response) {
+          // Handle smart endpoint response
+          if (data.agentMessage) {
             var toolCalls = data.actions ? data.actions.map(function(a) { return { name: a.tool, args: a.args, output: a.result ? a.result.message : '' }; }) : null;
             var agentData = null;
             if (data.actions) {
@@ -627,7 +826,10 @@ function getChatHTML(): string {
                 }
               }
             }
-            addMessage('agent', data.response, toolCalls, null, agentData);
+            addMessage('agent', data.agentMessage.content, toolCalls, null, agentData);
+          } else if (data.response) {
+            var toolCalls2 = data.actions ? data.actions.map(function(a) { return { name: a.tool, args: a.args, output: a.result ? a.result.message : '' }; }) : null;
+            addMessage('agent', data.response, toolCalls2, null, null);
           } else if (data.error) {
             addMessage('agent', data.message || data.error, null, data.error);
           }
@@ -714,15 +916,33 @@ function getChatHTML(): string {
       div.id = id;
       div.className = 'typing-indicator';
       div.innerHTML = '<div class="message-avatar" style="background:linear-gradient(135deg,#00d4ff,#0088cc);color:#fff;">H</div>' +
-        '<div style="display:flex;flex-direction:column;gap:4px;"><div class="typing-dots"><span></span><span></span><span></span></div><div style="font-size:0.7rem;color:#4a5a7a;padding-left:0.5rem;">Thinking...</div></div>';
+        '<div style="display:flex;flex-direction:column;gap:4px;"><div class="typing-dots"><span></span><span></span><span></span></div><div class="typing-label" style="font-size:0.7rem;color:#4a5a7a;padding-left:0.5rem;">Thinking...</div></div>';
       container.appendChild(div);
       scrollToBottom();
+      // Cycle through status messages for a natural feel
+      var labels = ['Thinking...', 'Processing your request...', 'Querying marketplace...', 'Almost ready...'];
+      var labelIdx = 0;
+      var labelInterval = setInterval(function() {
+        labelIdx = (labelIdx + 1) % labels.length;
+        var el = document.getElementById(id);
+        if (el) {
+          var lbl = el.querySelector('.typing-label');
+          if (lbl) lbl.textContent = labels[labelIdx];
+        } else {
+          clearInterval(labelInterval);
+        }
+      }, 1500);
+      div.setAttribute('data-interval', String(labelInterval));
       return id;
     }
 
     function removeTyping(id) {
       var el = document.getElementById(id);
-      if (el) el.remove();
+      if (el) {
+        var interval = el.getAttribute('data-interval');
+        if (interval) clearInterval(parseInt(interval));
+        el.remove();
+      }
     }
 
     function scrollToBottom() {

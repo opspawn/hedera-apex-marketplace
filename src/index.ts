@@ -153,6 +153,17 @@ export function createApp() {
       registryBroker,
       connectionHandler,
     },
+    getAgentCount: () => marketplace ? marketplace.getAgentCount() || registry.getCount() : registry.getCount(),
+    getAgentList: () => {
+      if (!marketplace) return [];
+      const agents = marketplace.getAllAgents();
+      return agents.map(a => ({
+        name: a.name,
+        agent_id: a.agent_id,
+        description: a.description,
+        trust_score: a.reputation_score,
+      }));
+    },
   }));
   app.use(createDashboardRouter());
 
