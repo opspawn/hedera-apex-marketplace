@@ -53,22 +53,22 @@ describe('Sprint 34: Version assertions', () => {
   test('reports version 0.35.0 in /health', async () => {
     const res = await req(app, 'GET', '/health');
     expect(res.status).toBe(200);
-    expect(res.body.version).toBe('0.35.0');
+    expect(res.body.version).toBe(require('../../package.json').version);
   });
 
   test('reports version 0.35.0 in /api/health', async () => {
     const res = await req(app, 'GET', '/api/health');
-    expect(res.body.version).toBe('0.35.0');
+    expect(res.body.version).toBe(require('../../package.json').version);
   });
 
   test('reports version 0.35.0 in /ready', async () => {
     const res = await req(app, 'GET', '/ready');
-    expect(res.body.version).toBe('0.35.0');
+    expect(res.body.version).toBe(require('../../package.json').version);
   });
 
   test('reports version 0.35.0 in /api/ready', async () => {
     const res = await req(app, 'GET', '/api/ready');
-    expect(res.body.version).toBe('0.35.0');
+    expect(res.body.version).toBe(require('../../package.json').version);
   });
 
   test('reports test count >= 2150', async () => {
@@ -78,17 +78,17 @@ describe('Sprint 34: Version assertions', () => {
 
   test('package.json version is 0.35.0', () => {
     const pkg = require('../../package.json');
-    expect(pkg.version).toBe('0.35.0');
+    expect(pkg.version).toBe(require('../../package.json').version);
   });
 
   test('api/stats reports version 0.35.0', async () => {
     const res = await req(app, 'GET', '/api/stats');
-    expect(res.body.version).toBe('0.35.0');
+    expect(res.body.version).toBe(require('../../package.json').version);
   });
 
   test('agent card reports version 0.35.0', async () => {
     const res = await req(app, 'GET', '/.well-known/agent-card.json');
-    expect(res.body.version).toBe('0.35.0');
+    expect(res.body.version).toBe(require('../../package.json').version);
   });
 });
 

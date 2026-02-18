@@ -132,7 +132,7 @@ describe('Version and test count updates', () => {
     const res = await request(app, 'GET', '/health');
 
     expect(res.status).toBe(200);
-    expect(res.body.version).toBe('0.35.0');
+    expect(res.body.version).toBe(require('../../package.json').version);
   });
 
   it('health endpoint should report test count >= 1450', async () => {
@@ -146,6 +146,6 @@ describe('Version and test count updates', () => {
     const app = createTestApp();
     const res = await request(app, 'GET', '/api/stats');
 
-    expect(res.body.version).toBe('0.35.0');
+    expect(res.body.version).toBe(require('../../package.json').version);
   });
 });

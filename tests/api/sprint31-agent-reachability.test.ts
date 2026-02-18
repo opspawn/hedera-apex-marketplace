@@ -42,7 +42,7 @@ describe('Sprint 31: Version and config', () => {
   test('reports version 0.35.0', async () => {
     const res = await req(app, 'GET', '/health');
     expect(res.status).toBe(200);
-    expect(res.body.version).toBe('0.35.0');
+    expect(res.body.version).toBe(require('../../package.json').version);
   });
 
   test('reports 1880 test count', async () => {
@@ -52,12 +52,12 @@ describe('Sprint 31: Version and config', () => {
 
   test('ready endpoint reports 0.35.0', async () => {
     const res = await req(app, 'GET', '/ready');
-    expect(res.body.version).toBe('0.35.0');
+    expect(res.body.version).toBe(require('../../package.json').version);
   });
 
   test('api/ready reports 0.35.0', async () => {
     const res = await req(app, 'GET', '/api/ready');
-    expect(res.body.version).toBe('0.35.0');
+    expect(res.body.version).toBe(require('../../package.json').version);
   });
 });
 
@@ -89,7 +89,7 @@ describe('Sprint 31: MCP Server endpoint', () => {
     expect(res.body.result).toBeDefined();
     expect(res.body.result.serverInfo).toBeDefined();
     expect(res.body.result.serverInfo.name).toBe('hedera-agent-marketplace');
-    expect(res.body.result.serverInfo.version).toBe('0.35.0');
+    expect(res.body.result.serverInfo.version).toBe(require('../../package.json').version);
   });
 
   test('POST /mcp initialize returns protocol version', async () => {
@@ -316,7 +316,7 @@ describe('Sprint 31: MCP tools discovery still works', () => {
   test('GET /api/mcp/tools has server info', async () => {
     const res = await req(app, 'GET', '/api/mcp/tools');
     expect(res.body.server).toBeDefined();
-    expect(res.body.server.version).toBe('0.35.0');
+    expect(res.body.server.version).toBe(require('../../package.json').version);
   });
 });
 
@@ -339,7 +339,7 @@ describe('Sprint 31: Enhanced A2A agent card', () => {
 
   test('agent card has version 0.35.0', async () => {
     const res = await req(app, 'GET', '/.well-known/agent.json');
-    expect(res.body.version).toBe('0.35.0');
+    expect(res.body.version).toBe(require('../../package.json').version);
   });
 
   test('agent card has reachability field', async () => {
@@ -420,7 +420,7 @@ describe('Sprint 31: A2A agent card API endpoint', () => {
 
   test('agent card has version 0.35.0', async () => {
     const res = await req(app, 'GET', '/api/a2a/agent-card');
-    expect(res.body.version).toBe('0.35.0');
+    expect(res.body.version).toBe(require('../../package.json').version);
   });
 
   test('agent card has skills array', async () => {
@@ -449,7 +449,7 @@ describe('Sprint 31: Reachability endpoint', () => {
 
   test('reachability has version', async () => {
     const res = await req(app, 'GET', '/api/reachability');
-    expect(res.body.version).toBe('0.35.0');
+    expect(res.body.version).toBe(require('../../package.json').version);
   });
 
   test('reachability has protocols object', async () => {

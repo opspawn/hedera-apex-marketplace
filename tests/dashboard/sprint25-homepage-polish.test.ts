@@ -68,7 +68,7 @@ describe('Sprint 25: Homepage Polish', () => {
 
   test('displays version 0.35.0', async () => {
     const res = await req(app, '/');
-    expect(res.text).toContain('v0.35.0');
+    expect(res.text).toContain('v' + require('../../package.json').version);
   });
 
   test('includes Agent Chat link in nav', async () => {
@@ -78,7 +78,7 @@ describe('Sprint 25: Homepage Polish', () => {
 
   test('GET /health returns version 0.35.0', async () => {
     const res = await req(app, '/health');
-    expect(res.body.version).toBe('0.35.0');
+    expect(res.body.version).toBe(require('../../package.json').version);
   });
 
   test('GET /health shows test_count >= 1600', async () => {
@@ -88,7 +88,7 @@ describe('Sprint 25: Homepage Polish', () => {
 
   test('GET /api/stats returns version 0.35.0', async () => {
     const res = await req(app, '/api/stats');
-    expect(res.body.version).toBe('0.35.0');
+    expect(res.body.version).toBe(require('../../package.json').version);
   });
 
   test('GET /api/stats shows testCount >= 1600', async () => {

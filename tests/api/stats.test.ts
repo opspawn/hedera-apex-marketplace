@@ -42,7 +42,7 @@ describe('GET /api/stats', () => {
 
   it('should return correct version', async () => {
     const res = await request(app, 'GET', '/api/stats');
-    expect(res.body.version).toBe('0.35.0');
+    expect(res.body.version).toBe(require('../../package.json').version);
   });
 
   it('should return test count as number >= 1335', async () => {

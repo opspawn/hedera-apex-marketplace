@@ -40,7 +40,7 @@ describe('Demo API Validation', () => {
     it('should return version field', async () => {
       const res = await request(app, 'GET', '/api/demo/status');
       expect(res.status).toBe(200);
-      expect(res.body.version).toBe('0.35.0');
+      expect(res.body.version).toBe(require('../../package.json').version);
     });
 
     it('should return endpoint field', async () => {
@@ -126,7 +126,7 @@ describe('Demo API Validation', () => {
     it('should return version 0.11.0', async () => {
       const res = await request(app, 'GET', '/health');
       expect(res.status).toBe(200);
-      expect(res.body.version).toBe('0.35.0');
+      expect(res.body.version).toBe(require('../../package.json').version);
     });
 
     it('should report updated test count', async () => {

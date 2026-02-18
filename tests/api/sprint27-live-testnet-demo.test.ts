@@ -48,17 +48,17 @@ describe('Sprint 27: Live Testnet Demo + Quality', () => {
 
   test('GET /health returns v0.35.0', async () => {
     const res = await req(app, 'GET', '/health');
-    expect(res.body.version).toBe('0.35.0');
+    expect(res.body.version).toBe(require('../../package.json').version);
   });
 
   test('GET /api/stats returns v0.35.0', async () => {
     const res = await req(app, 'GET', '/api/stats');
-    expect(res.body.version).toBe('0.35.0');
+    expect(res.body.version).toBe(require('../../package.json').version);
   });
 
   test('agent-card.json has version 0.35.0', async () => {
     const res = await req(app, 'GET', '/.well-known/agent-card.json');
-    expect(res.body.version).toBe('0.35.0');
+    expect(res.body.version).toBe(require('../../package.json').version);
   });
 
   // =============================================

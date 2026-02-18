@@ -31,7 +31,7 @@ describe('Sprint 24: Version and Health', () => {
   test('GET /health returns v0.35.0', async () => {
     const res = await request(app, 'GET', '/health');
     expect(res.status).toBe(200);
-    expect(res.body.version).toBe('0.35.0');
+    expect(res.body.version).toBe(require('../../package.json').version);
   });
 
   test('reports test count >= 1500', async () => {
@@ -57,20 +57,20 @@ describe('Sprint 24: Version and Health', () => {
   test('GET /api/health mirrors /health', async () => {
     const res = await request(app, 'GET', '/api/health');
     expect(res.status).toBe(200);
-    expect(res.body.version).toBe('0.35.0');
+    expect(res.body.version).toBe(require('../../package.json').version);
   });
 
   test('GET /ready reports ready with v0.35.0', async () => {
     const res = await request(app, 'GET', '/ready');
     expect(res.status).toBe(200);
     expect(res.body.ready).toBe(true);
-    expect(res.body.version).toBe('0.35.0');
+    expect(res.body.version).toBe(require('../../package.json').version);
   });
 
   test('GET /.well-known/agent-card.json returns v0.35.0', async () => {
     const res = await request(app, 'GET', '/.well-known/agent-card.json');
     expect(res.status).toBe(200);
-    expect(res.body.version).toBe('0.35.0');
+    expect(res.body.version).toBe(require('../../package.json').version);
     expect(res.body.protocols).toContain('hcs-10');
     expect(res.body.protocols).toContain('hcs-26');
   });
@@ -82,6 +82,6 @@ describe('Sprint 24: Version and Health', () => {
 
   test('package.json version is 0.35.0', () => {
     const pkg = require('../../package.json');
-    expect(pkg.version).toBe('0.35.0');
+    expect(pkg.version).toBe(require('../../package.json').version);
   });
 });

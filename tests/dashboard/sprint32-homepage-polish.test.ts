@@ -98,7 +98,7 @@ describe('Sprint 32: Homepage Polish', () => {
   describe('version and standards', () => {
     test('should show version 0.35.0', async () => {
       const res = await request(server, 'GET', '/');
-      expect(res.text).toContain('v0.35.0');
+      expect(res.text).toContain('v' + require('../../package.json').version);
     });
 
     test('should list all 6 HCS standards', async () => {

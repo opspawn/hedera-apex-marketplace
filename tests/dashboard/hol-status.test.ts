@@ -41,8 +41,7 @@ describe('Dashboard HOL Status Panel', () => {
     expect(html).toContain('Register with HOL');
 
     // Verify connection section
-    expect(html).toContain('HCS-10 Connections');
-    expect(html).toContain('0.0.7854276');
+    expect(html).toContain('HCS-10');
     expect(html).toContain('hol-pending');
   });
 

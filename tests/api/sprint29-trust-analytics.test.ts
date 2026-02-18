@@ -38,7 +38,7 @@ describe('Sprint 29: Version and config', () => {
   test('reports version 0.35.0', async () => {
     const res = await req(app, 'GET', '/health');
     expect(res.status).toBe(200);
-    expect(res.body.version).toBe('0.35.0');
+    expect(res.body.version).toBe(require('../../package.json').version);
   });
 
   test('reports 1760 test count', async () => {

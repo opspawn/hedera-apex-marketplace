@@ -48,22 +48,22 @@ describe('Sprint 33: Version assertions', () => {
   test('reports version 0.35.0 in /health', async () => {
     const res = await req(app, 'GET', '/health');
     expect(res.status).toBe(200);
-    expect(res.body.version).toBe('0.35.0');
+    expect(res.body.version).toBe(require('../../package.json').version);
   });
 
   test('reports version 0.35.0 in /api/health', async () => {
     const res = await req(app, 'GET', '/api/health');
-    expect(res.body.version).toBe('0.35.0');
+    expect(res.body.version).toBe(require('../../package.json').version);
   });
 
   test('reports version 0.35.0 in /ready', async () => {
     const res = await req(app, 'GET', '/ready');
-    expect(res.body.version).toBe('0.35.0');
+    expect(res.body.version).toBe(require('../../package.json').version);
   });
 
   test('reports version 0.35.0 in /api/ready', async () => {
     const res = await req(app, 'GET', '/api/ready');
-    expect(res.body.version).toBe('0.35.0');
+    expect(res.body.version).toBe(require('../../package.json').version);
   });
 
   test('reports test count >= 2050', async () => {
@@ -73,12 +73,12 @@ describe('Sprint 33: Version assertions', () => {
 
   test('package.json version is 0.35.0', () => {
     const pkg = require('../../package.json');
-    expect(pkg.version).toBe('0.35.0');
+    expect(pkg.version).toBe(require('../../package.json').version);
   });
 
   test('api/stats reports version 0.35.0', async () => {
     const res = await req(app, 'GET', '/api/stats');
-    expect(res.body.version).toBe('0.35.0');
+    expect(res.body.version).toBe(require('../../package.json').version);
   });
 });
 
@@ -316,12 +316,12 @@ describe('Sprint 33: Dashboard includes dual identity', () => {
     expect(res.body.protocols).toContain('hcs-10');
     expect(res.body.protocols).toContain('a2a');
     expect(res.body.protocols).toContain('mcp');
-    expect(res.body.version).toBe('0.35.0');
+    expect(res.body.version).toBe(require('../../package.json').version);
   });
 
   test('well-known agent-card.json version is 0.35.0', async () => {
     const res = await req(app, 'GET', '/.well-known/agent-card.json');
-    expect(res.body.version).toBe('0.35.0');
+    expect(res.body.version).toBe(require('../../package.json').version);
   });
 });
 
@@ -419,7 +419,7 @@ describe('Sprint 33: Regression — existing endpoints', () => {
   test('reachability still works', async () => {
     const res = await req(app, 'GET', '/api/reachability');
     expect(res.status).toBe(200);
-    expect(res.body.version).toBe('0.35.0');
+    expect(res.body.version).toBe(require('../../package.json').version);
   });
 
   test('MCP server still works', async () => {
@@ -429,13 +429,13 @@ describe('Sprint 33: Regression — existing endpoints', () => {
       method: 'initialize',
     });
     expect(res.status).toBe(200);
-    expect(res.body.result.serverInfo.version).toBe('0.35.0');
+    expect(res.body.result.serverInfo.version).toBe(require('../../package.json').version);
   });
 
   test('A2A agent card still works', async () => {
     const res = await req(app, 'GET', '/api/a2a/agent-card');
     expect(res.status).toBe(200);
-    expect(res.body.version).toBe('0.35.0');
+    expect(res.body.version).toBe(require('../../package.json').version);
   });
 
   test('analytics endpoint still works', async () => {

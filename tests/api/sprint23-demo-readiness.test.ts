@@ -231,7 +231,7 @@ describe('Sprint 23: /.well-known/agent.json', () => {
 
   test('agent.json has version 0.35.0', async () => {
     const res = await request(app, 'GET', '/.well-known/agent.json');
-    expect(res.body.version).toBe('0.35.0');
+    expect(res.body.version).toBe(require('../../package.json').version);
   });
 
   test('agent.json has protocols array with 8 protocols', async () => {
@@ -292,12 +292,12 @@ describe('Sprint 23: Version bump', () => {
 
   test('health returns v0.35.0', async () => {
     const res = await request(app, 'GET', '/health');
-    expect(res.body.version).toBe('0.35.0');
+    expect(res.body.version).toBe(require('../../package.json').version);
   });
 
   test('stats returns v0.35.0', async () => {
     const res = await request(app, 'GET', '/api/stats');
-    expect(res.body.version).toBe('0.35.0');
+    expect(res.body.version).toBe(require('../../package.json').version);
   });
 
   test('test_count is 1600', async () => {
@@ -307,6 +307,6 @@ describe('Sprint 23: Version bump', () => {
 
   test('ready endpoint returns v0.35.0', async () => {
     const res = await request(app, 'GET', '/ready');
-    expect(res.body.version).toBe('0.35.0');
+    expect(res.body.version).toBe(require('../../package.json').version);
   });
 });

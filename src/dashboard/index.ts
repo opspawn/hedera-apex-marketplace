@@ -13,6 +13,9 @@ import { RecordingPipeline } from '../demo/recording-pipeline';
 import { buildNarrationScript } from '../demo/narration-script';
 import { getTransitionsInOrder, validateTransitions } from '../demo/scene-transitions';
 
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const PKG_VERSION: string = require('../../package.json').version;
+
 export function createDashboardRouter(): Router {
   const router = Router();
 
@@ -565,7 +568,7 @@ function getDashboardHTML(): string {
       <div class="logo" aria-hidden="true">H</div>
       <div>
         <h1><span>Hedera</span> Agent Marketplace</h1>
-        <div style="font-size:0.7rem; color:#6a7a9a; margin-top:0.15rem;">v0.35.0 &middot; <span id="testnet-mode" style="color:#00c853;">Testnet</span> &middot; Account <span style="color:#00d4ff;">0.0.7854018</span></div>
+        <div style="font-size:0.7rem; color:#6a7a9a; margin-top:0.15rem;">v${PKG_VERSION} &middot; <span id="testnet-mode" style="color:#00c853;">Testnet</span> &middot; Account <span style="color:#00d4ff;">0.0.7854018</span></div>
       </div>
     </div>
     <div class="header-right" aria-label="Supported HCS Standards">

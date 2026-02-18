@@ -46,12 +46,12 @@ describe('Sprint 26: Live Hedera Testnet + Demo Polish', () => {
 
   test('GET /health returns v0.35.0', async () => {
     const res = await req(app, 'GET', '/health');
-    expect(res.body.version).toBe('0.35.0');
+    expect(res.body.version).toBe(require('../../package.json').version);
   });
 
   test('GET /api/stats returns v0.35.0 with hedera section', async () => {
     const res = await req(app, 'GET', '/api/stats');
-    expect(res.body.version).toBe('0.35.0');
+    expect(res.body.version).toBe(require('../../package.json').version);
     expect(res.body.hedera).toBeDefined();
     expect(res.body.hedera.mode).toBeDefined();
     expect(res.body.hedera.network).toBe('testnet');
@@ -67,7 +67,7 @@ describe('Sprint 26: Live Hedera Testnet + Demo Polish', () => {
     expect(typeof res.body.topics_created).toBe('number');
     expect(typeof res.body.active_connections).toBe('number');
     expect(res.body.hedera_network).toBe('testnet');
-    expect(res.body.version).toBe('0.35.0');
+    expect(res.body.version).toBe(require('../../package.json').version);
     expect(res.body.timestamp).toBeDefined();
   });
 
@@ -232,6 +232,6 @@ describe('Sprint 26: Live Hedera Testnet + Demo Polish', () => {
 
   test('agent-card.json has version 0.35.0', async () => {
     const res = await req(app, 'GET', '/.well-known/agent-card.json');
-    expect(res.body.version).toBe('0.35.0');
+    expect(res.body.version).toBe(require('../../package.json').version);
   });
 });

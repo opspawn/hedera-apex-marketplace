@@ -1,5 +1,8 @@
 import { HederaTestnetClient } from '../../src/hedera/client';
 
+// Get the mocked @hashgraph/sdk so we can temporarily override behaviour
+const mockSdk = jest.requireMock('@hashgraph/sdk');
+
 describe('HederaTestnetClient', () => {
   describe('constructor', () => {
     it('should default to mock mode when no credentials provided', () => {
@@ -18,7 +21,14 @@ describe('HederaTestnetClient', () => {
     });
 
     it('should fall back to mock when SDK init fails with bad credentials', () => {
-      // Use a clearly invalid key that will cause SDK to throw
+      // Make all PrivateKey parse methods throw to simulate invalid key
+      const origECDSA = mockSdk.PrivateKey.fromStringECDSA;
+      const origED25519 = mockSdk.PrivateKey.fromStringED25519;
+      const origFromString = mockSdk.PrivateKey.fromString;
+      mockSdk.PrivateKey.fromStringECDSA = jest.fn(() => { throw new Error('bad key'); });
+      mockSdk.PrivateKey.fromStringED25519 = jest.fn(() => { throw new Error('bad key'); });
+      mockSdk.PrivateKey.fromString = jest.fn(() => { throw new Error('bad key'); });
+
       const client = new HederaTestnetClient({
         accountId: '0.0.12345',
         privateKey: 'not-a-valid-key',
@@ -26,6 +36,11 @@ describe('HederaTestnetClient', () => {
       });
       // Falls back to mock mode when SDK fails to initialize
       expect(client.isMockMode()).toBe(true);
+
+      // Restore original mock behaviour
+      mockSdk.PrivateKey.fromStringECDSA = origECDSA;
+      mockSdk.PrivateKey.fromStringED25519 = origED25519;
+      mockSdk.PrivateKey.fromString = origFromString;
     });
 
     it('should accept explicit network setting', () => {

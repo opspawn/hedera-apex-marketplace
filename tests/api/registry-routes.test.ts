@@ -137,7 +137,7 @@ describe('Updated health endpoint', () => {
   it('should report version 0.16.0', async () => {
     const res = await request(app, 'GET', '/health');
     expect(res.status).toBe(200);
-    expect(res.body.version).toBe('0.35.0');
+    expect(res.body.version).toBe(require('../../package.json').version);
   });
 
   it('should include hcs-10-connections in agent card', async () => {

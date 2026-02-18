@@ -36,7 +36,7 @@ describe('Sprint 24: Dashboard UX Polish', () => {
 
   test('includes version v0.35.0', async () => {
     const res = await request(app, 'GET', '/');
-    expect(res.text).toContain('v0.35.0');
+    expect(res.text).toContain('v' + require('../../package.json').version);
   });
 
   test('includes testnet banner', async () => {

@@ -8,6 +8,7 @@ module.exports = {
   collectCoverageFrom: ['src/**/*.ts', '!src/index.ts'],
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov'],
+  setupFiles: ['<rootDir>/tests/jest-setup.js'],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
     // file-type is ESM-only; mock it for CJS Jest environment

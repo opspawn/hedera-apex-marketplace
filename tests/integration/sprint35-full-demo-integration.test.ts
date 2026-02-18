@@ -82,7 +82,7 @@ describe('Sprint 35 Integration: Health reflects new version', () => {
   test('health endpoint reflects v0.35.0 after demo', async () => {
     await req(app, 'POST', '/api/demo/full-flow');
     const health = await req(app, 'GET', '/health');
-    expect(health.body.version).toBe('0.35.0');
+    expect(health.body.version).toBe(require('../../package.json').version);
   });
 
   test('live-stats still works after demo flow', async () => {
