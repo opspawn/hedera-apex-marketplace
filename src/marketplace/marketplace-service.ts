@@ -387,6 +387,13 @@ export class MarketplaceService {
   }
 
   /**
+   * Get all registered agents.
+   */
+  getAllAgents(): RegisteredAgent[] {
+    return Array.from(this.agents.values());
+  }
+
+  /**
    * Build a full MarketplaceAgent by combining data from multiple HCS modules.
    */
   private async buildMarketplaceAgent(agent: RegisteredAgent): Promise<MarketplaceAgent> {

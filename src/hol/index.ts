@@ -49,3 +49,27 @@ export type {
   ERC8004TrustBoost,
   LinkResult,
 } from './erc8004-identity';
+
+export { HOLRegistryClient, HOLApiError } from './hol-registry-client';
+export type {
+  HOLSearchParams,
+  HOLAgent,
+  HOLSearchResult,
+  HOLStats,
+  HOLRegistry,
+  HOLProtocol,
+  HOLRegistrationPayload,
+  HOLRegistrationQuote,
+  HOLRegistrationResult,
+  HOLChatSession,
+  HOLChatMessage,
+  HOLChatResponse,
+  HOLSkill,
+  HOLClientConfig,
+} from './hol-registry-client';
+
+export { HOLAutoRegister } from './hol-auto-register';
+export type {
+  HOLRegistrationRecord,
+  AutoRegistrationResult,
+} from './hol-auto-register';

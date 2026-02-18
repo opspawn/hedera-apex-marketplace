@@ -30,6 +30,8 @@ import { createChatRouter } from './chat';
 import { TrustScoreTracker } from './marketplace/trust-score';
 import { AnalyticsTracker } from './marketplace/analytics';
 import { ERC8004IdentityManager } from './hol/erc8004-identity';
+import { HOLRegistryClient } from './hol/hol-registry-client';
+import { HOLAutoRegister } from './hol/hol-auto-register';
 import { KMSAgentRegistrationManager } from './hedera/kms-agent-registration';
 import { createMockKMSClient } from './hedera/mock-kms-client';
 
@@ -131,13 +133,21 @@ export function createApp() {
   const mockKmsClient = createMockKMSClient();
   const kmsRegistrationManager = new KMSAgentRegistrationManager(mockKmsClient, 'us-east-1');
 
+  // Initialize HOL Registry Client (direct REST API)
+  const holClient = new HOLRegistryClient({
+    apiKey: process.env.HOL_API_KEY,
+  });
+
+  // Initialize HOL Auto-Registration
+  const holAutoRegister = new HOLAutoRegister(holClient, process.env.STAGING_URL || 'https://hedera.opspawn.com');
+
   // Create Express app
   const app = express();
   app.use(cors());
   app.use(express.json());
 
   // Mount routes
-  app.use(createRouter(registry, hcs19, hcs26, marketplace, hcs20, START_TIME, demoFlow, registryBroker, connectionHandler, registryAuth, testnetIntegration, trustTracker, analyticsTracker, erc8004Manager, kmsRegistrationManager));
+  app.use(createRouter(registry, hcs19, hcs26, marketplace, hcs20, START_TIME, demoFlow, registryBroker, connectionHandler, registryAuth, testnetIntegration, trustTracker, analyticsTracker, erc8004Manager, kmsRegistrationManager, holClient, holAutoRegister));
   app.use(createChatRouter({
     chatAgentConfig: {
       registryBroker,
@@ -146,14 +156,14 @@ export function createApp() {
   }));
   app.use(createDashboardRouter());
 
-  return { app, config, registry, marketplace, hcs10, hcs11, hcs14, hcs19, hcs19Identity, hcs26, hcs20, demoFlow, testnetIntegration, registryBroker, connectionHandler, registryAuth, trustTracker, analyticsTracker, erc8004Manager, kmsRegistrationManager };
+  return { app, config, registry, marketplace, hcs10, hcs11, hcs14, hcs19, hcs19Identity, hcs26, hcs20, demoFlow, testnetIntegration, registryBroker, connectionHandler, registryAuth, trustTracker, analyticsTracker, erc8004Manager, kmsRegistrationManager, holClient, holAutoRegister };
 }
 
 /**
  * Seed demo agents and start the server.
  */
 async function main() {
-  const { app, config, marketplace, hcs19, hcs20, connectionHandler } = createApp();
+  const { app, config, marketplace, hcs19, hcs20, connectionHandler, holAutoRegister } = createApp();
 
   // Seed demo agents
   const seedResult = await seedDemoAgents(marketplace, hcs19, hcs20);
@@ -161,6 +171,18 @@ async function main() {
     console.log(`Seeded ${seedResult.seeded} demo agents`);
     for (const a of seedResult.agents) {
       console.log(`  ${a.name} (${a.agent_id}) — reputation: ${a.reputation}, points: ${a.points}`);
+    }
+  }
+
+  // Auto-register agents in HOL Registry Broker (background, non-blocking)
+  if (holAutoRegister && marketplace) {
+    const agents = marketplace.getAllAgents();
+    if (agents.length > 0) {
+      holAutoRegister.autoRegisterAll(agents).then(result => {
+        console.log(`HOL auto-registration: ${result.registered} registered, ${result.skipped} skipped, ${result.failed} failed`);
+      }).catch(err => {
+        console.log(`HOL auto-registration skipped: ${err instanceof Error ? err.message : 'connection error'}`);
+      });
     }
   }
 

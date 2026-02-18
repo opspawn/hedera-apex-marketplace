@@ -41,10 +41,12 @@ import { AnalyticsTracker } from '../marketplace/analytics';
 import { ERC8004IdentityManager } from '../hol/erc8004-identity';
 import { KMSKeyManager, KMSAuditEntry, IKMSClient, KMSKeySpec } from '../hedera/kms-signer';
 import { KMSAgentRegistrationManager } from '../hedera/kms-agent-registration';
+import { HOLRegistryClient } from '../hol/hol-registry-client';
+import { HOLAutoRegister } from '../hol/hol-auto-register';
 
 // Test count managed as a constant — updated each sprint
-const TEST_COUNT = 2329;
-const VERSION = '0.35.0';
+const TEST_COUNT = 2429;
+const VERSION = '0.37.0';
 const STANDARDS = ['HCS-10', 'HCS-11', 'HCS-14', 'HCS-19', 'HCS-20', 'HCS-26'];
 
 export function createRouter(
@@ -63,6 +65,8 @@ export function createRouter(
   analyticsTracker?: AnalyticsTracker,
   erc8004Manager?: ERC8004IdentityManager,
   kmsRegistrationManager?: KMSAgentRegistrationManager,
+  holClient?: HOLRegistryClient,
+  holAutoRegister?: HOLAutoRegister,
 ): Router {
   const router = Router();
   const appStartTime = startTime || Date.now();
@@ -2632,6 +2636,202 @@ export function createRouter(
       })),
       total: registrations.length,
     });
+  });
+
+  // ==========================================
+  // HOL Registry Client Routes (Sprint 37)
+  // Direct REST API integration with HOL Registry Broker
+  // ==========================================
+
+  // GET /api/hol/search — Search HOL registry (proxied with caching)
+  router.get('/api/hol/search', async (req: Request, res: Response) => {
+    const client = holClient || new HOLRegistryClient();
+    try {
+      const q = String(req.query.q || '');
+      const minTrust = req.query.minTrust ? parseInt(String(req.query.minTrust)) : undefined;
+      const limit = req.query.limit ? parseInt(String(req.query.limit)) : 20;
+      const page = req.query.page ? parseInt(String(req.query.page)) : 1;
+      const protocol = req.query.protocol ? String(req.query.protocol) : undefined;
+      const registry = req.query.registry ? String(req.query.registry) : undefined;
+
+      const result = await client.search({ q, minTrust, limit, page, protocol, registry });
+      res.json(result);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      res.status(502).json({ error: 'hol_search_failed', message });
+    }
+  });
+
+  // GET /api/hol/stats — HOL platform statistics
+  router.get('/api/hol/stats', async (_req: Request, res: Response) => {
+    const client = holClient || new HOLRegistryClient();
+    try {
+      const stats = await client.getStats();
+      res.json(stats);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      res.status(502).json({ error: 'hol_stats_failed', message });
+    }
+  });
+
+  // GET /api/hol/registries — List all HOL registries
+  router.get('/api/hol/registries', async (_req: Request, res: Response) => {
+    const client = holClient || new HOLRegistryClient();
+    try {
+      const registries = await client.getRegistries();
+      res.json({ registries, total: registries.length });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      res.status(502).json({ error: 'hol_registries_failed', message });
+    }
+  });
+
+  // GET /api/hol/protocols — List all HOL protocols
+  router.get('/api/hol/protocols', async (_req: Request, res: Response) => {
+    const client = holClient || new HOLRegistryClient();
+    try {
+      const protocols = await client.getProtocols();
+      res.json({ protocols, total: protocols.length });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      res.status(502).json({ error: 'hol_protocols_failed', message });
+    }
+  });
+
+  // GET /api/hol/agent/:uaid — Resolve a HOL agent by UAID
+  router.get('/api/hol/agent/:uaid', async (req: Request, res: Response) => {
+    const client = holClient || new HOLRegistryClient();
+    try {
+      const uaid = String(req.params.uaid);
+      const agent = await client.resolve(uaid);
+      if (!agent) {
+        res.status(404).json({ error: 'not_found', message: `Agent ${uaid} not found in HOL registry` });
+        return;
+      }
+      res.json(agent);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      res.status(502).json({ error: 'hol_resolve_failed', message });
+    }
+  });
+
+  // GET /api/hol/agent/:uaid/similar — Find similar agents
+  router.get('/api/hol/agent/:uaid/similar', async (req: Request, res: Response) => {
+    const client = holClient || new HOLRegistryClient();
+    try {
+      const uaid = String(req.params.uaid);
+      const limit = req.query.limit ? parseInt(String(req.query.limit)) : 5;
+      const agents = await client.findSimilar(uaid, limit);
+      res.json({ agents, total: agents.length });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      res.status(502).json({ error: 'hol_similar_failed', message });
+    }
+  });
+
+  // GET /api/hol/skills — Browse HOL skills
+  router.get('/api/hol/skills', async (req: Request, res: Response) => {
+    const client = holClient || new HOLRegistryClient();
+    try {
+      const limit = req.query.limit ? parseInt(String(req.query.limit)) : 20;
+      const name = req.query.name ? String(req.query.name) : undefined;
+      const skills = await client.getSkills({ limit, name });
+      res.json({ skills, total: skills.length });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      res.status(502).json({ error: 'hol_skills_failed', message });
+    }
+  });
+
+  // POST /api/hol/register — Register our agents in HOL
+  router.post('/api/hol/register', async (req: Request, res: Response) => {
+    const client = holClient || new HOLRegistryClient();
+    try {
+      const payload = req.body;
+      if (!payload?.name || !payload?.description) {
+        res.status(400).json({ error: 'validation_error', message: 'name and description are required' });
+        return;
+      }
+      const result = await client.register(payload);
+      const statusCode = result.success ? 201 : 500;
+      res.status(statusCode).json(result);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      res.status(500).json({ error: 'hol_register_failed', message });
+    }
+  });
+
+  // POST /api/hol/register/quote — Get registration price quote
+  router.post('/api/hol/register/quote', async (req: Request, res: Response) => {
+    const client = holClient || new HOLRegistryClient();
+    try {
+      const quote = await client.getRegistrationQuote(req.body);
+      res.json(quote);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      res.status(502).json({ error: 'hol_quote_failed', message });
+    }
+  });
+
+  // POST /api/hol/register/all — Auto-register all marketplace agents in HOL
+  router.post('/api/hol/register/all', async (_req: Request, res: Response) => {
+    if (!holAutoRegister || !marketplace) {
+      res.status(501).json({ error: 'not_available', message: 'HOL auto-registration not configured' });
+      return;
+    }
+    try {
+      const agents = marketplace.getAllAgents ? marketplace.getAllAgents() : [];
+      const result = await holAutoRegister.autoRegisterAll(agents);
+      res.status(201).json(result);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      res.status(500).json({ error: 'hol_auto_register_failed', message });
+    }
+  });
+
+  // GET /api/hol/register/status — Status of auto-registered agents
+  router.get('/api/hol/register/status', (_req: Request, res: Response) => {
+    if (!holAutoRegister) {
+      res.json({ total: 0, registered: 0, failed: 0, skipped: 0, records: [] });
+      return;
+    }
+    const summary = holAutoRegister.getSummary();
+    const records = holAutoRegister.getRecords();
+    res.json({ ...summary, records });
+  });
+
+  // POST /api/hol/chat — Create chat session with HOL agent
+  router.post('/api/hol/chat', async (req: Request, res: Response) => {
+    const client = holClient || new HOLRegistryClient();
+    try {
+      const { agentUaid } = req.body;
+      if (!agentUaid) {
+        res.status(400).json({ error: 'validation_error', message: 'agentUaid is required' });
+        return;
+      }
+      const session = await client.createChatSession(agentUaid);
+      res.status(201).json(session);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      res.status(500).json({ error: 'hol_chat_session_failed', message });
+    }
+  });
+
+  // POST /api/hol/chat/message — Send message in HOL chat session
+  router.post('/api/hol/chat/message', async (req: Request, res: Response) => {
+    const client = holClient || new HOLRegistryClient();
+    try {
+      const { sessionId, content } = req.body;
+      if (!sessionId || !content) {
+        res.status(400).json({ error: 'validation_error', message: 'sessionId and content are required' });
+        return;
+      }
+      const response = await client.sendChatMessage(sessionId, content);
+      res.status(201).json(response);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      res.status(500).json({ error: 'hol_chat_message_failed', message });
+    }
   });
 
   return router;

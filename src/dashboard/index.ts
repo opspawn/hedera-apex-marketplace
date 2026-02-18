@@ -723,43 +723,72 @@ function getDashboardHTML(): string {
 
     <!-- HOL Registry Status -->
     <div class="view" id="view-hol-status" role="tabpanel" aria-labelledby="tab-hol-status">
-      <h2 style="color:#fff; margin-bottom:0.5rem;">HOL Registry & Connections</h2>
-      <p style="color:#6a7a9a; margin-bottom:1.5rem; font-size:0.9rem;">Registry Broker status, HCS-10 connection listener, and active agent connections.</p>
+      <h2 style="color:#fff; margin-bottom:0.5rem;">HOL Registry & Discovery</h2>
+      <p style="color:#6a7a9a; margin-bottom:1.5rem; font-size:0.9rem;">Search 93K+ agents across 15 registries. Registry Broker status, agent discovery, and platform statistics.</p>
 
-      <div class="stats" style="grid-template-columns: repeat(3, 1fr);">
+      <div class="stats" style="grid-template-columns: repeat(4, 1fr);">
         <div class="stat-card">
           <div class="stat-icon">&#x1F310;</div>
           <div class="value" id="hol-broker-status">--</div>
           <div class="label">Registry Broker</div>
         </div>
         <div class="stat-card">
+          <div class="stat-icon">&#x1F916;</div>
+          <div class="value" id="hol-total-agents">--</div>
+          <div class="label">Total Agents</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">&#x1F3E2;</div>
+          <div class="value" id="hol-total-registries">--</div>
+          <div class="label">Registries</div>
+        </div>
+        <div class="stat-card">
           <div class="stat-icon">&#x1F50C;</div>
           <div class="value" id="hol-connection-status">--</div>
           <div class="label">Connection Listener</div>
         </div>
-        <div class="stat-card">
-          <div class="stat-icon">&#x1F4AC;</div>
-          <div class="value" id="hol-active-connections">0</div>
-          <div class="label">Active Connections</div>
-        </div>
       </div>
 
-      <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.25rem; margin-top:1rem;">
+      <!-- Search bar -->
+      <div style="margin-top:1.5rem; display:flex; gap:0.75rem; align-items:center;">
+        <input type="text" id="hol-search-input" placeholder="Search agents across 93K+ in HOL..." style="flex:1; padding:0.75rem 1rem; background:#111827; border:1px solid #1e2a4a; border-radius:8px; color:#fff; font-size:0.9rem;" onkeydown="if(event.key==='Enter') holSearchAgents();" />
+        <select id="hol-search-protocol" style="padding:0.75rem; background:#111827; border:1px solid #1e2a4a; border-radius:8px; color:#fff; font-size:0.85rem;">
+          <option value="">All Protocols</option>
+          <option value="hcs-10">HCS-10</option>
+          <option value="a2a">A2A</option>
+          <option value="mcp">MCP</option>
+          <option value="xmtp">XMTP</option>
+        </select>
+        <input type="number" id="hol-search-trust" placeholder="Min Trust" min="0" max="100" style="width:100px; padding:0.75rem; background:#111827; border:1px solid #1e2a4a; border-radius:8px; color:#fff; font-size:0.85rem;" />
+        <button class="btn btn-primary" onclick="holSearchAgents()" style="padding:0.75rem 1.5rem; white-space:nowrap;">Search HOL</button>
+      </div>
+
+      <!-- Search results -->
+      <div id="hol-search-results" style="margin-top:1rem; min-height:100px;"></div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.25rem; margin-top:1.5rem;">
+        <!-- Our registered agents -->
         <div style="background:#111827; border-radius:12px; padding:1.5rem; border:1px solid #1e2a4a;">
-          <h3 style="color:#a855f7; margin-bottom:1rem; font-size:1rem;">Registry Broker</h3>
-          <div id="hol-broker-details" style="font-size:0.85rem; color:#8892b0;">
+          <h3 style="color:#a855f7; margin-bottom:1rem; font-size:1rem;">Our Agents in HOL</h3>
+          <div id="hol-our-agents" style="font-size:0.85rem; color:#8892b0;">
             <div style="margin-bottom:0.5rem;">Broker URL: <span style="color:#00d4ff;">https://hol.org/registry/api/v1</span></div>
             <div style="margin-bottom:0.5rem;">UAID: <span id="hol-uaid" style="color:#e0e0e0;">Not registered</span></div>
             <div style="margin-bottom:0.5rem;">Protocol: <span style="color:#00c853;">HCS-10</span></div>
             <div style="margin-bottom:1rem;">Last Check: <span id="hol-last-check" style="color:#e0e0e0;">--</span></div>
-            <button class="btn btn-primary" onclick="triggerHolRegistration()" id="hol-register-btn">Register with HOL</button>
+            <div id="hol-auto-reg-records" style="margin-bottom:1rem;"></div>
+            <div style="display:flex; gap:0.5rem;">
+              <button class="btn btn-primary" onclick="triggerHolRegistration()" id="hol-register-btn" style="font-size:0.85rem;">Register with HOL</button>
+              <button class="btn btn-secondary" onclick="holAutoRegisterAll()" id="hol-auto-reg-btn" style="font-size:0.85rem;">Auto-Register All</button>
+            </div>
           </div>
         </div>
+        <!-- Platform stats -->
         <div style="background:#111827; border-radius:12px; padding:1.5rem; border:1px solid #1e2a4a;">
-          <h3 style="color:#00d4ff; margin-bottom:1rem; font-size:1rem;">HCS-10 Connections</h3>
-          <div id="hol-connections-list" style="font-size:0.85rem; color:#8892b0;">
-            <div style="margin-bottom:0.5rem;">Inbound Topic: <span style="color:#00d4ff;">0.0.7854276</span></div>
+          <h3 style="color:#00d4ff; margin-bottom:1rem; font-size:1rem;">Platform Statistics</h3>
+          <div id="hol-platform-stats" style="font-size:0.85rem; color:#8892b0;">
+            <div style="margin-bottom:0.5rem;">Active Connections: <span id="hol-active-connections" style="color:#00d4ff;">0</span></div>
             <div style="margin-bottom:0.5rem;">Pending Requests: <span id="hol-pending" style="color:#ffaa00;">0</span></div>
+            <div id="hol-registry-breakdown" style="margin-top:1rem;"></div>
             <div id="hol-connections-detail" style="margin-top:1rem;">No active connections</div>
           </div>
         </div>
@@ -2214,18 +2243,36 @@ function getDashboardHTML(): string {
     // HOL Registry functions
     async function loadHolStatus() {
       try {
-        const [regRes, connRes] = await Promise.all([
+        const [regRes, connRes, statsRes, autoRegRes] = await Promise.all([
           fetchWithTimeout('/api/registry/status'),
           fetchWithTimeout('/api/agent/connections'),
+          fetchWithTimeout('/api/hol/stats').catch(function() { return { json: function() { return {}; } }; }),
+          fetchWithTimeout('/api/hol/register/status').catch(function() { return { json: function() { return { records: [] }; } }; }),
         ]);
         const regData = await regRes.json();
         const connData = await connRes.json();
+        const statsData = await statsRes.json();
+        const autoRegData = await autoRegRes.json();
 
         document.getElementById('hol-broker-status').textContent = regData.registered ? 'Registered' : 'Not Registered';
         document.getElementById('hol-broker-status').style.color = regData.registered ? '#00c853' : '#ffaa00';
         document.getElementById('hol-uaid').textContent = regData.uaid || 'Not registered';
         document.getElementById('hol-last-check').textContent = regData.lastCheck ? new Date(regData.lastCheck).toLocaleTimeString() : '--';
 
+        // Stats
+        if (statsData.totalAgents) {
+          document.getElementById('hol-total-agents').textContent = statsData.totalAgents.toLocaleString();
+          document.getElementById('hol-total-registries').textContent = String(statsData.totalRegistries || 0);
+          var regBreakdown = (statsData.registries || []).slice(0, 5).map(function(r) {
+            return '<div style="display:flex; justify-content:space-between; margin-bottom:0.3rem;">' +
+              '<span style="color:#e0e0e0;">' + esc(r.name) + '</span>' +
+              '<span style="color:#00d4ff;">' + (r.count || 0).toLocaleString() + '</span>' +
+            '</div>';
+          }).join('');
+          document.getElementById('hol-registry-breakdown').innerHTML = regBreakdown || '<div style="color:#6a7a9a;">No registry data</div>';
+        }
+
+        // Connections
         document.getElementById('hol-connection-status').textContent = connData.running ? 'Active' : 'Inactive';
         document.getElementById('hol-connection-status').style.color = connData.running ? '#00c853' : '#6a7a9a';
         document.getElementById('hol-active-connections').textContent = String(connData.active || 0);
@@ -2240,10 +2287,83 @@ function getDashboardHTML(): string {
             '</div>';
           }).join('');
         }
+
+        // Auto-registration records
+        var records = autoRegData.records || [];
+        if (records.length > 0) {
+          document.getElementById('hol-auto-reg-records').innerHTML = records.map(function(r) {
+            var color = r.status === 'registered' ? '#00c853' : r.status === 'skipped' ? '#ffaa00' : '#ff4444';
+            return '<div style="display:flex; justify-content:space-between; align-items:center; padding:0.4rem 0; border-bottom:1px solid #1e2a4a;">' +
+              '<span style="color:#e0e0e0; font-size:0.8rem;">' + esc(r.name) + '</span>' +
+              '<span style="padding:0.15rem 0.4rem; border-radius:4px; font-size:0.7rem; color:' + color + ';">' + esc(r.status) + '</span>' +
+            '</div>';
+          }).join('');
+        }
       } catch (e) {
         document.getElementById('hol-broker-status').textContent = 'Error';
         document.getElementById('hol-broker-status').style.color = '#ff4444';
       }
+    }
+
+    async function holSearchAgents() {
+      var query = document.getElementById('hol-search-input').value.trim();
+      var protocol = document.getElementById('hol-search-protocol').value;
+      var minTrust = document.getElementById('hol-search-trust').value;
+      var resultsDiv = document.getElementById('hol-search-results');
+      resultsDiv.innerHTML = '<div style="color:#6a7a9a; padding:1rem; text-align:center;">Searching HOL registry...</div>';
+
+      try {
+        var qs = '?limit=20';
+        if (query) qs += '&q=' + encodeURIComponent(query);
+        if (protocol) qs += '&protocol=' + encodeURIComponent(protocol);
+        if (minTrust) qs += '&minTrust=' + encodeURIComponent(minTrust);
+
+        var res = await fetchWithTimeout('/api/hol/search' + qs);
+        var data = await res.json();
+        var agents = data.agents || [];
+
+        if (agents.length === 0) {
+          resultsDiv.innerHTML = '<div style="color:#6a7a9a; padding:1rem; text-align:center;">No agents found matching your search.</div>';
+          return;
+        }
+
+        resultsDiv.innerHTML = '<div style="color:#6a7a9a; margin-bottom:0.5rem; font-size:0.85rem;">Found ' + data.total + ' agents</div>' +
+          agents.map(function(a) {
+            var trustColor = (a.trustScore || 0) >= 70 ? '#00c853' : (a.trustScore || 0) >= 40 ? '#ffaa00' : '#6a7a9a';
+            var protocols = (a.protocols || []).join(', ') || a.registry || 'unknown';
+            return '<div style="padding:0.75rem; background:#111827; border:1px solid #1e2a4a; border-radius:8px; margin-bottom:0.5rem; display:flex; justify-content:space-between; align-items:center;">' +
+              '<div style="flex:1;">' +
+                '<div style="color:#fff; font-weight:600; font-size:0.9rem;">' + esc(a.name) + '</div>' +
+                '<div style="color:#8892b0; font-size:0.8rem; margin-top:0.2rem;">' + esc((a.description || '').substring(0, 100)) + '</div>' +
+                '<div style="margin-top:0.3rem;">' +
+                  '<span style="color:#a855f7; font-size:0.75rem;">' + esc(a.registry) + '</span>' +
+                  '<span style="color:#6a7a9a; font-size:0.75rem; margin-left:0.5rem;">' + esc(protocols) + '</span>' +
+                '</div>' +
+              '</div>' +
+              '<div style="text-align:right; min-width:80px;">' +
+                '<div style="color:' + trustColor + '; font-weight:700; font-size:1.1rem;">' + (a.trustScore || '--') + '</div>' +
+                '<div style="color:#6a7a9a; font-size:0.7rem;">trust score</div>' +
+              '</div>' +
+            '</div>';
+          }).join('');
+      } catch (e) {
+        resultsDiv.innerHTML = '<div style="color:#ff4444; padding:1rem; text-align:center;">Search failed: ' + esc(e.message || 'Unknown error') + '</div>';
+      }
+    }
+
+    async function holAutoRegisterAll() {
+      var btn = document.getElementById('hol-auto-reg-btn');
+      btn.disabled = true;
+      btn.textContent = 'Registering...';
+      try {
+        var res = await fetchWithTimeout('/api/hol/register/all', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+        var data = await res.json();
+        showToast('HOL: ' + (data.registered || 0) + ' registered, ' + (data.skipped || 0) + ' skipped, ' + (data.failed || 0) + ' failed', 'success');
+        setTimeout(loadHolStatus, 1000);
+      } catch (e) {
+        showToast('Auto-registration failed', 'error');
+      }
+      setTimeout(function() { btn.disabled = false; btn.textContent = 'Auto-Register All'; }, 3000);
     }
 
     async function triggerHolRegistration() {
