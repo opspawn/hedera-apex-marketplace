@@ -36,6 +36,12 @@ export function createDashboardRouter(): Router {
     res.send(getDemoWalkthroughHTML());
   });
 
+  // KMS Demo — standalone showcase page for Workshop 3
+  router.get('/kms-demo', (_req: Request, res: Response) => {
+    res.setHeader('Content-Type', 'text/html');
+    res.send(getKMSDemoPageHTML());
+  });
+
   // Demo narration script endpoint
   router.get('/demo/narration', (_req: Request, res: Response) => {
     const script = buildNarrationScript();
@@ -3485,6 +3491,326 @@ function getDemoFlowHTML(): string {
       d.textContent = s;
       return d.innerHTML;
     }
+  </script>
+</body>
+</html>`;
+}
+
+/**
+ * KMS Demo Page — Standalone showcase for Workshop 3: Enterprise Key Management.
+ * Displays architecture diagram, key features, live API status, and configuration.
+ */
+function getKMSDemoPageHTML(): string {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AWS KMS for Hedera — Enterprise Key Management | Hedera Agent Marketplace</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #080c14; color: #e0e0e0; min-height: 100vh; }
+    a { color: #00d4ff; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .header { background: linear-gradient(135deg, #0d1528 0%, #131b30 50%, #0f1a2e 100%); padding: 1.5rem 2rem; border-bottom: 1px solid #1e2a4a; display: flex; align-items: center; justify-content: space-between; }
+    .header-left { display: flex; align-items: center; gap: 1rem; }
+    .logo { width: 40px; height: 40px; background: linear-gradient(135deg, #f59e0b, #d97706); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.1rem; color: #fff; }
+    .header h1 { font-size: 1.4rem; color: #fff; font-weight: 600; }
+    .header h1 span { color: #f59e0b; }
+    .header-right { display: flex; gap: 0.5rem; align-items: center; }
+    .badge { padding: 0.35rem 0.75rem; background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 6px; font-size: 0.75rem; color: #f59e0b; }
+    .badge-green { background: rgba(0, 200, 83, 0.1); border-color: rgba(0, 200, 83, 0.3); color: #00c853; }
+
+    .container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+
+    .hero { text-align: center; padding: 2.5rem 0 2rem; }
+    .hero h2 { font-size: 2rem; color: #fff; margin-bottom: 0.75rem; }
+    .hero h2 .accent { color: #f59e0b; }
+    .hero p { color: #8892b0; font-size: 1.1rem; max-width: 700px; margin: 0 auto; line-height: 1.6; }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-bottom: 2rem; }
+    @media (max-width: 800px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+
+    .card { background: linear-gradient(135deg, #111827 0%, #0f1520 100%); border: 1px solid #1e2a4a; border-radius: 12px; padding: 1.5rem; }
+    .card h3 { color: #f59e0b; font-size: 1rem; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; }
+    .card h3 .icon { font-size: 1.2rem; }
+
+    .feature-list { list-style: none; }
+    .feature-list li { padding: 0.5rem 0; color: #c0c8d8; font-size: 0.9rem; border-bottom: 1px solid rgba(30, 42, 74, 0.5); display: flex; align-items: flex-start; gap: 0.5rem; }
+    .feature-list li:last-child { border-bottom: none; }
+    .feature-list .check { color: #00c853; font-weight: bold; flex-shrink: 0; }
+
+    .arch-box { background: #0a0f1a; border: 1px solid #1e2a4a; border-radius: 12px; padding: 2rem; margin-bottom: 2rem; overflow-x: auto; }
+    .arch-box h3 { color: #f59e0b; font-size: 1.1rem; margin-bottom: 1.25rem; text-align: center; }
+    .arch-diagram { font-family: 'Courier New', monospace; font-size: 0.82rem; line-height: 1.5; color: #a0b0d0; white-space: pre; text-align: center; }
+    .arch-diagram .kms { color: #f59e0b; font-weight: bold; }
+    .arch-diagram .hedera { color: #00d4ff; font-weight: bold; }
+    .arch-diagram .agent { color: #a855f7; font-weight: bold; }
+    .arch-diagram .arrow { color: #4a5a7a; }
+
+    .config-panel { background: #0a0f1a; border: 1px solid #1e2a4a; border-radius: 12px; padding: 1.5rem; margin-bottom: 2rem; }
+    .config-panel h3 { color: #f59e0b; margin-bottom: 1rem; font-size: 1.1rem; }
+    .config-row { display: flex; justify-content: space-between; align-items: center; padding: 0.6rem 0; border-bottom: 1px solid rgba(30, 42, 74, 0.5); font-size: 0.85rem; }
+    .config-row:last-child { border-bottom: none; }
+    .config-key { color: #00d4ff; font-family: 'Courier New', monospace; }
+    .config-val { color: #6a7a9a; font-family: 'Courier New', monospace; }
+    .config-desc { color: #8892b0; font-size: 0.8rem; max-width: 400px; }
+
+    .stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 2rem; }
+    .stat-card { background: linear-gradient(135deg, #111827, #0f1520); border: 1px solid #1e2a4a; border-radius: 12px; padding: 1.25rem; text-align: center; position: relative; overflow: hidden; }
+    .stat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
+    .stat-card:nth-child(1)::before { background: linear-gradient(90deg, #f59e0b, #d97706); }
+    .stat-card:nth-child(2)::before { background: linear-gradient(90deg, #00d4ff, #0088cc); }
+    .stat-card:nth-child(3)::before { background: linear-gradient(90deg, #a855f7, #7c3aed); }
+    .stat-card:nth-child(4)::before { background: linear-gradient(90deg, #00c853, #00a040); }
+    .stat-card .label { color: #6a7a9a; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; }
+    .stat-card .value { color: #fff; font-size: 1.6rem; font-weight: 700; }
+    @media (max-width: 800px) { .stat-row { grid-template-columns: 1fr 1fr; } }
+
+    .api-section { margin-bottom: 2rem; }
+    .api-section h3 { color: #f59e0b; font-size: 1.1rem; margin-bottom: 1rem; }
+    .api-endpoint { background: #0a0f1a; border: 1px solid #1e2a4a; border-radius: 8px; padding: 0.75rem 1rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.75rem; font-size: 0.85rem; }
+    .api-method { font-family: 'Courier New', monospace; font-weight: 700; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; }
+    .api-method.get { background: rgba(0, 200, 83, 0.15); color: #00c853; }
+    .api-method.post { background: rgba(0, 212, 255, 0.15); color: #00d4ff; }
+    .api-path { color: #c0c8d8; font-family: 'Courier New', monospace; }
+    .api-desc { color: #6a7a9a; margin-left: auto; }
+
+    .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 0.3rem; }
+    .status-dot.green { background: #00c853; box-shadow: 0 0 6px rgba(0, 200, 83, 0.5); }
+    .status-dot.yellow { background: #f59e0b; box-shadow: 0 0 6px rgba(245, 158, 11, 0.5); }
+
+    .footer { text-align: center; padding: 2rem 0 1rem; color: #4a5a7a; font-size: 0.8rem; border-top: 1px solid #1e2a4a; margin-top: 2rem; }
+    .footer a { color: #00d4ff; }
+
+    .live-demo-btn { display: inline-block; padding: 0.75rem 2rem; background: linear-gradient(135deg, #f59e0b, #d97706); color: #000; font-weight: 700; border-radius: 8px; font-size: 0.95rem; cursor: pointer; border: none; transition: opacity 0.2s; margin-top: 1rem; }
+    .live-demo-btn:hover { opacity: 0.9; text-decoration: none; }
+
+    @keyframes fadeInUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+    .animate { animation: fadeInUp 0.5s ease forwards; opacity: 0; }
+    .delay-1 { animation-delay: 0.1s; }
+    .delay-2 { animation-delay: 0.2s; }
+    .delay-3 { animation-delay: 0.3s; }
+    .delay-4 { animation-delay: 0.4s; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="header-left">
+      <div class="logo">K</div>
+      <h1>Enterprise <span>Key Management</span> for Hedera</h1>
+    </div>
+    <div class="header-right">
+      <span class="badge">AWS KMS</span>
+      <span class="badge">ED25519</span>
+      <span class="badge badge-green">v${PKG_VERSION}</span>
+      <a href="/" style="color:#6a7a9a; font-size:0.85rem; margin-left:0.5rem;">&larr; Dashboard</a>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="hero animate">
+      <h2>AWS KMS <span class="accent">ED25519</span> Agent Signing</h2>
+      <p>Private keys never leave AWS KMS hardware. Agents sign Hedera transactions using cloud-hosted ED25519 keys with full audit trails, automatic rotation, and compliance reporting.</p>
+      <a href="/?tab=kms" class="live-demo-btn">Open Live KMS Dashboard</a>
+    </div>
+
+    <!-- Live Stats -->
+    <div class="stat-row animate delay-1">
+      <div class="stat-card">
+        <div class="label">KMS Keys</div>
+        <div class="value" id="stat-keys">-</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Sign Operations</div>
+        <div class="value" id="stat-signs">-</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Algorithms</div>
+        <div class="value">2</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Status</div>
+        <div class="value"><span class="status-dot green"></span><span id="stat-status">Loading</span></div>
+      </div>
+    </div>
+
+    <!-- Architecture Diagram -->
+    <div class="arch-box animate delay-2">
+      <h3>System Architecture</h3>
+      <div class="arch-diagram">
+<span class="agent">+---------------------+</span>      <span class="kms">+---------------------+</span>      <span class="hedera">+---------------------+</span>
+<span class="agent">|   Agent Runtime     |</span>      <span class="kms">|     AWS KMS         |</span>      <span class="hedera">|   Hedera Network    |</span>
+<span class="agent">|                     |</span>      <span class="kms">|                     |</span>      <span class="hedera">|                     |</span>
+<span class="agent">|  Register Agent  ---|</span><span class="arrow">---&gt;</span><span class="kms">|  Create ED25519 Key |</span>      <span class="hedera">|                     |</span>
+<span class="agent">|                     |</span>      <span class="kms">|  (HSM-backed)       |</span>      <span class="hedera">|                     |</span>
+<span class="agent">|  Sign Transaction---|</span><span class="arrow">---&gt;</span><span class="kms">|  KMS Sign()     ----|</span><span class="arrow">---&gt;</span><span class="hedera">|  Submit to HCS      |</span>
+<span class="agent">|                     |</span>      <span class="kms">|  (key never leaves) |</span>      <span class="hedera">|  (topics/consensus) |</span>
+<span class="agent">|  Rotate Key     ----|</span><span class="arrow">---&gt;</span><span class="kms">|  New Key + Retire   |</span>      <span class="hedera">|                     |</span>
+<span class="agent">|                     |</span>      <span class="kms">|  Old (scheduled     |</span>      <span class="hedera">|  HCS-10 Messages    |</span>
+<span class="agent">|  Audit Log      &lt;---|</span><span class="arrow">&lt;---</span><span class="kms">|  deletion)          |</span>      <span class="hedera">|  HCS-11 Profiles    |</span>
+<span class="agent">|                     |</span>      <span class="kms">|                     |</span>      <span class="hedera">|  HCS-14 Identity    |</span>
+<span class="agent">+---------------------+</span>      <span class="kms">+---------------------+</span>      <span class="hedera">+---------------------+</span>
+
+<span class="arrow">Key Types:</span>  <span class="kms">ECC_NIST_EDWARDS25519</span> (Hedera native)  |  <span class="kms">ECC_SECG_P256K1</span> (EVM-compatible)
+<span class="arrow">Flow:</span>  Agent Runtime <span class="arrow">&rarr;</span> KMS Sign() <span class="arrow">&rarr;</span> Hedera Consensus <span class="arrow">&rarr;</span> Audit Trail
+      </div>
+    </div>
+
+    <!-- Features Grid -->
+    <div class="grid-2 animate delay-3">
+      <div class="card">
+        <h3><span class="icon">&#128273;</span> ED25519 Signing</h3>
+        <ul class="feature-list">
+          <li><span class="check">&#10003;</span> HSM-backed ED25519 keys (FIPS 140-2 Level 3)</li>
+          <li><span class="check">&#10003;</span> First KMS integration for Hedera ED25519 (Nov 2025)</li>
+          <li><span class="check">&#10003;</span> Private keys never exported — all signing happens in KMS</li>
+          <li><span class="check">&#10003;</span> DER-encoded public key extraction for Hedera account binding</li>
+          <li><span class="check">&#10003;</span> Both ED25519 and ECDSA secp256k1 supported</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3><span class="icon">&#128260;</span> Multi-Key Management</h3>
+        <ul class="feature-list">
+          <li><span class="check">&#10003;</span> Hierarchical key derivation paths (agent-signing, identity, payment)</li>
+          <li><span class="check">&#10003;</span> Per-agent key isolation — each agent gets its own KMS key</li>
+          <li><span class="check">&#10003;</span> Key lifecycle: create &rarr; active &rarr; rotating &rarr; retired &rarr; deleted</li>
+          <li><span class="check">&#10003;</span> Multi-region replication tracking</li>
+          <li><span class="check">&#10003;</span> Key aliases and metadata tagging</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3><span class="icon">&#128259;</span> Auto-Rotation</h3>
+        <ul class="feature-list">
+          <li><span class="check">&#10003;</span> Policy-based rotation (age or sign-count triggers)</li>
+          <li><span class="check">&#10003;</span> Zero-downtime rotation — old key stays active during transition</li>
+          <li><span class="check">&#10003;</span> Automatic scheduled deletion of retired keys</li>
+          <li><span class="check">&#10003;</span> Rotation history fully audited</li>
+          <li><span class="check">&#10003;</span> Configurable max-age and max-sign-count thresholds</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3><span class="icon">&#128202;</span> Compliance Reporting</h3>
+        <ul class="feature-list">
+          <li><span class="check">&#10003;</span> Full audit trail — every sign, create, rotate logged</li>
+          <li><span class="check">&#10003;</span> Key usage quotas (max signs/hour with alerts)</li>
+          <li><span class="check">&#10003;</span> SOC 2, HIPAA, PCI DSS alignment via AWS KMS</li>
+          <li><span class="check">&#10003;</span> Exportable compliance reports (JSON)</li>
+          <li><span class="check">&#10003;</span> Cost estimation per key ($1/mo storage + $0.03/10K signs)</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Configuration Panel -->
+    <div class="config-panel animate delay-4">
+      <h3>Configuration (Environment Variables)</h3>
+      <div class="config-row">
+        <span class="config-key">AWS_KMS_KEY_ARN</span>
+        <span class="config-desc">Primary KMS key ARN for agent signing</span>
+        <span class="config-val">arn:aws:kms:us-east-1:***:key/***</span>
+      </div>
+      <div class="config-row">
+        <span class="config-key">AWS_REGION</span>
+        <span class="config-desc">AWS region for KMS operations</span>
+        <span class="config-val">us-east-1</span>
+      </div>
+      <div class="config-row">
+        <span class="config-key">AWS_ACCESS_KEY_ID</span>
+        <span class="config-desc">IAM credentials with kms:Sign, kms:CreateKey permissions</span>
+        <span class="config-val">AKIA***************</span>
+      </div>
+      <div class="config-row">
+        <span class="config-key">AWS_SECRET_ACCESS_KEY</span>
+        <span class="config-desc">IAM secret (stored securely, never logged)</span>
+        <span class="config-val">********</span>
+      </div>
+      <div class="config-row">
+        <span class="config-key">KMS_KEY_ROTATION_DAYS</span>
+        <span class="config-desc">Auto-rotate keys after N days (default: 90)</span>
+        <span class="config-val">90</span>
+      </div>
+      <div class="config-row">
+        <span class="config-key">KMS_MAX_SIGNS_PER_HOUR</span>
+        <span class="config-desc">Rate limit per key (default: 1000)</span>
+        <span class="config-val">1000</span>
+      </div>
+      <div class="config-row">
+        <span class="config-key">HEDERA_OPERATOR_ID</span>
+        <span class="config-desc">Hedera account ID bound to KMS keys</span>
+        <span class="config-val">0.0.******</span>
+      </div>
+    </div>
+
+    <!-- API Endpoints -->
+    <div class="api-section">
+      <h3>KMS API Endpoints</h3>
+      <div class="api-endpoint">
+        <span class="api-method post">POST</span>
+        <span class="api-path">/api/kms/create-key</span>
+        <span class="api-desc">Create ED25519 or ECDSA key in KMS</span>
+      </div>
+      <div class="api-endpoint">
+        <span class="api-method get">GET</span>
+        <span class="api-path">/api/kms/keys</span>
+        <span class="api-desc">List all KMS-managed agent keys</span>
+      </div>
+      <div class="api-endpoint">
+        <span class="api-method post">POST</span>
+        <span class="api-path">/api/kms/register-agent</span>
+        <span class="api-desc">Full KMS-backed agent registration</span>
+      </div>
+      <div class="api-endpoint">
+        <span class="api-method post">POST</span>
+        <span class="api-path">/api/kms/sign/:keyId</span>
+        <span class="api-desc">Sign transaction with KMS key</span>
+      </div>
+      <div class="api-endpoint">
+        <span class="api-method post">POST</span>
+        <span class="api-path">/api/kms/rotate/:agentId</span>
+        <span class="api-desc">Rotate an agent's KMS key</span>
+      </div>
+      <div class="api-endpoint">
+        <span class="api-method get">GET</span>
+        <span class="api-path">/api/kms/audit/:keyId</span>
+        <span class="api-desc">Key signing audit log</span>
+      </div>
+      <div class="api-endpoint">
+        <span class="api-method get">GET</span>
+        <span class="api-path">/api/kms/status</span>
+        <span class="api-desc">KMS integration health</span>
+      </div>
+      <div class="api-endpoint">
+        <span class="api-method get">GET</span>
+        <span class="api-path">/api/kms/registrations</span>
+        <span class="api-desc">List KMS-registered agents</span>
+      </div>
+    </div>
+
+    <div class="footer">
+      <p>Hedera Agent Marketplace v${PKG_VERSION} &mdash; Built by <a href="https://opspawn.com">OpSpawn</a></p>
+      <p style="margin-top:0.5rem;">Workshop 3: Enterprise Key Management for Hedera &mdash; Signing with AWS KMS</p>
+    </div>
+  </div>
+
+  <script>
+    async function loadKMSStats() {
+      try {
+        var resp = await fetch('/api/kms/status');
+        if (!resp.ok) throw new Error('API error');
+        var data = await resp.json();
+        document.getElementById('stat-keys').textContent = data.totalKeys || 0;
+        document.getElementById('stat-signs').textContent = data.totalSignOps || 0;
+        document.getElementById('stat-status').textContent = 'Online';
+      } catch (e) {
+        document.getElementById('stat-keys').textContent = '0';
+        document.getElementById('stat-signs').textContent = '0';
+        document.getElementById('stat-status').textContent = 'Demo';
+      }
+    }
+    loadKMSStats();
+    setInterval(loadKMSStats, 10000);
   </script>
 </body>
 </html>`;
