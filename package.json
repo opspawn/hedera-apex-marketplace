@@ -1,6 +1,6 @@
 {
   "name": "hedera-agent-marketplace",
-  "version": "0.41.0",
+  "version": "0.42.0",
   "description": "Decentralized agent marketplace on Hedera — agent registration, discovery, payments, and reputation using HCS-10/11/14/19/20/26 standards",
   "main": "dist/index.js",
   "scripts": {
@@ -24,11 +24,14 @@
     "hcs-26",
     "a2a",
     "mcp",
-    "multi-protocol"
+    "multi-protocol",
+    "aws-kms",
+    "ed25519"
   ],
   "author": "OpSpawn <opspawnhq@gmail.com>",
   "license": "MIT",
   "dependencies": {
+    "@aws-sdk/client-kms": "^3.992.0",
     "@hashgraph/sdk": "^2.80.0",
     "@hashgraphonline/conversational-agent": "^0.2.220",
     "@hashgraphonline/standards-sdk": "^0.1.159",

@@ -13,6 +13,9 @@ export interface HederaClientConfig {
   accountId: string;
   privateKey: string;
   network: 'testnet' | 'mainnet';
+  kmsEnabled?: boolean;
+  kmsSigner?: (message: Uint8Array) => Promise<Uint8Array>;
+  kmsPublicKey?: string;
 }
 
 export interface HederaClientStatus {
@@ -21,6 +24,8 @@ export interface HederaClientStatus {
   accountId: string;
   connected: boolean;
   mirrorNode: string;
+  kmsEnabled: boolean;
+  kmsPublicKey?: string;
 }
 
 export interface TopicInfo {
@@ -41,6 +46,9 @@ export class HederaTestnetClient {
   private client: unknown = null;
   private mockTopicCounter = 0;
   private mockSequenceCounters: Map<string, number> = new Map();
+  private kmsEnabled: boolean;
+  private kmsSigner?: (message: Uint8Array) => Promise<Uint8Array>;
+  private kmsPublicKey?: string;
 
   constructor(config?: Partial<HederaClientConfig>) {
     const accountId = config?.accountId || process.env.HEDERA_ACCOUNT_ID || '';
@@ -48,7 +56,10 @@ export class HederaTestnetClient {
     const network = config?.network || (process.env.HEDERA_NETWORK as 'testnet' | 'mainnet') || 'testnet';
 
     this.config = { accountId, privateKey, network };
-    this.mockMode = !accountId || !privateKey;
+    this.kmsEnabled = config?.kmsEnabled || false;
+    this.kmsSigner = config?.kmsSigner;
+    this.kmsPublicKey = config?.kmsPublicKey;
+    this.mockMode = !accountId || (!privateKey && !this.kmsEnabled);
 
     if (!this.mockMode) {
       this.initLiveClient();
@@ -128,7 +139,33 @@ export class HederaTestnetClient {
       mirrorNode: this.config.network === 'testnet'
         ? 'testnet.mirrornode.hedera.com'
         : 'mainnet-public.mirrornode.hedera.com',
+      kmsEnabled: this.kmsEnabled,
+      kmsPublicKey: this.kmsPublicKey,
     };
+  }
+
+  /**
+   * Check if KMS signing is enabled.
+   */
+  isKMSEnabled(): boolean {
+    return this.kmsEnabled;
+  }
+
+  /**
+   * Get the KMS signer function (if configured).
+   */
+  getKMSSigner(): ((message: Uint8Array) => Promise<Uint8Array>) | undefined {
+    return this.kmsSigner;
+  }
+
+  /**
+   * Configure KMS-backed signing after construction.
+   * Useful for late initialization when KMS key is created after client construction.
+   */
+  setKMSSigner(signer: (message: Uint8Array) => Promise<Uint8Array>, publicKey: string): void {
+    this.kmsSigner = signer;
+    this.kmsPublicKey = publicKey;
+    this.kmsEnabled = true;
   }
 
   /**
