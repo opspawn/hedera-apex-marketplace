@@ -327,16 +327,17 @@ describe('Sprint 32: Demo Quality E2E Flow', () => {
       expect(res.response).toContain('SentinelAI');
     });
 
-    test('should list available tools (13 total with trust scores)', () => {
+    test('should list available tools (14 total with trust scores and hire)', () => {
       const tools = chatAgent.getAvailableTools();
       expect(tools).toContain('register_agent');
       expect(tools).toContain('find_registrations');
       expect(tools).toContain('vector_search');
+      expect(tools).toContain('hire_agent');
       expect(tools).toContain('get_agent_details');
       expect(tools).toContain('get_trust_scores');
       expect(tools).toContain('create_chat_session');
       expect(tools).toContain('relay_message');
-      expect(tools.length).toBe(13);
+      expect(tools.length).toBe(14);
     });
 
     test('should get help message with all capabilities', async () => {

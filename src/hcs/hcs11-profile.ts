@@ -6,6 +6,7 @@
  */
 
 import { AgentProfile, RegisteredAgent } from '../types';
+import { TestnetIntegration } from '../hedera/testnet-integration';
 
 export interface HCS11Config {
   accountId: string;
@@ -15,18 +16,24 @@ export interface HCS11Config {
 
 export class HCS11ProfileManager {
   private config: HCS11Config;
+  private testnet: TestnetIntegration | null = null;
 
-  constructor(config: HCS11Config) {
+  constructor(config: HCS11Config, testnet?: TestnetIntegration) {
     this.config = config;
+    this.testnet = testnet || null;
+  }
+
+  /**
+   * Attach a testnet integration layer for real HCS profile submissions.
+   */
+  setTestnetIntegration(testnet: TestnetIntegration): void {
+    this.testnet = testnet;
   }
 
   /**
    * Create an HCS-11 profile for a registered agent.
-   *
-   * TODO [Sprint 1]: Implement with standards-sdk
-   * - Build profile JSON per HCS-11 spec
-   * - Submit to agent's profile topic
-   * - Verify via mirror node
+   * When testnet integration is available, submits the profile to the
+   * agent's profile topic on the real Hedera testnet.
    */
   async createProfile(agent: RegisteredAgent): Promise<AgentProfile> {
     const profile: AgentProfile = {
@@ -49,6 +56,21 @@ export class HCS11ProfileManager {
         profile: agent.profile_topic,
       },
     };
+
+    // Submit profile to on-chain topic when testnet integration is available
+    // and the agent has a real profile topic (not a mock ID matching registry topic)
+    if (this.testnet && agent.profile_topic && agent.hedera_verified) {
+      try {
+        await this.testnet.submitMessage(agent.profile_topic, {
+          ...profile,
+          standard: 'hcs-11',
+        });
+      } catch (err) {
+        // Non-fatal: profile is still usable even if on-chain submission fails
+        console.warn(`HCS-11 profile on-chain submit failed for ${agent.name}: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      }
+    }
+
     return profile;
   }
 

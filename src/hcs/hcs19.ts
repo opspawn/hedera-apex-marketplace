@@ -19,6 +19,7 @@ import {
   IdentityResolutionResult,
   IdentityVerificationResult,
 } from '../types';
+import { TestnetIntegration } from '../hedera/testnet-integration';
 
 export interface HCS19IdentityConfig {
   accountId: string;
@@ -32,21 +33,27 @@ export class HCS19AgentIdentity {
   private identitiesByDID: Map<string, string> = new Map(); // DID -> topicId
   private claims: Map<string, IdentityClaim[]> = new Map(); // topicId -> claims
   private counter: number = 0;
+  private testnet: TestnetIntegration | null = null;
 
-  constructor(config: HCS19IdentityConfig) {
+  constructor(config: HCS19IdentityConfig, testnet?: TestnetIntegration) {
     this.config = config;
+    this.testnet = testnet || null;
+  }
+
+  /**
+   * Attach a testnet integration layer for real HCS identity operations.
+   */
+  setTestnetIntegration(testnet: TestnetIntegration): void {
+    this.testnet = testnet;
   }
 
   /**
    * Register a new agent identity on Hedera.
    *
-   * Creates an identity topic and publishes the agent's profile as the
-   * first message. Returns the full AgentIdentity with topic ID and DID.
-   *
-   * TODO [Sprint 1]: Implement with @hashgraph/sdk
-   * - TopicCreateTransaction to create identity topic
-   * - TopicMessageSubmitTransaction to publish profile JSON
-   * - Anchor DID document on the topic
+   * When testnet integration is available:
+   * - Creates a real HCS-19 identity topic on Hedera testnet
+   * - Publishes the agent's DID document as the first message
+   * Otherwise uses an in-memory mock topic ID.
    */
   async registerAgent(profile: AgentIdentityProfile): Promise<AgentIdentity> {
     if (!profile.name || profile.name.trim().length === 0) {
@@ -59,8 +66,24 @@ export class HCS19AgentIdentity {
       throw new Error('At least one capability is required');
     }
 
-    this.counter++;
-    const topicId = `0.0.${7900000 + this.counter}`;
+    let topicId: string;
+    let onChain = false;
+
+    if (this.testnet && this.testnet.isLive()) {
+      try {
+        const topicRecord = await this.testnet.createTopic(`hcs-19:identity:${profile.name}`);
+        topicId = topicRecord.topicId;
+        onChain = topicRecord.onChain;
+      } catch (err) {
+        console.warn(`HCS-19 identity topic creation failed for ${profile.name}: ${err instanceof Error ? err.message : 'Unknown error'}`);
+        this.counter++;
+        topicId = `0.0.${7900000 + this.counter}`;
+      }
+    } else {
+      this.counter++;
+      topicId = `0.0.${7900000 + this.counter}`;
+    }
+
     const did = profile.did || `did:hedera:${this.config.network}:${this.config.accountId}_${topicId}`;
 
     const identity: AgentIdentity = {
@@ -76,6 +99,26 @@ export class HCS19AgentIdentity {
       updated_at: new Date().toISOString(),
       sequence_number: 1,
     };
+
+    // Publish DID document to identity topic when on-chain
+    if (onChain && this.testnet) {
+      try {
+        await this.testnet.submitMessage(topicId, {
+          standard: 'hcs-19',
+          version: '1.0',
+          type: 'did-document',
+          did,
+          name: profile.name,
+          description: profile.description,
+          capabilities: profile.capabilities,
+          endpoint: profile.endpoint,
+          protocols: profile.protocols,
+          timestamp: new Date().toISOString(),
+        });
+      } catch (err) {
+        console.warn(`HCS-19 DID document publish failed for ${profile.name}: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      }
+    }
 
     this.identities.set(topicId, identity);
     this.identitiesByDID.set(did, topicId);

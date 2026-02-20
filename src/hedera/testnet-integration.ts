@@ -15,6 +15,8 @@ export interface TestnetIntegrationConfig {
   accountId: string;
   privateKey: string;
   network: 'testnet' | 'mainnet';
+  /** Maximum number of on-chain topics to create. After this limit, falls back to mock. */
+  maxOnChainTopics?: number;
 }
 
 export interface TestnetTopicRecord {
@@ -53,6 +55,7 @@ export class TestnetIntegration {
   private topics: TestnetTopicRecord[] = [];
   private messages: TestnetMessageRecord[] = [];
   private config: TestnetIntegrationConfig;
+  private onChainTopicCount = 0;
 
   constructor(config: TestnetIntegrationConfig) {
     this.config = config;
@@ -61,6 +64,16 @@ export class TestnetIntegration {
       privateKey: config.privateKey,
       network: config.network,
     });
+  }
+
+  /**
+   * Check if on-chain topic limit has been reached.
+   * Used to budget HBAR by limiting on-chain topics to first N agents.
+   */
+  isOnChainLimitReached(): boolean {
+    const limit = this.config.maxOnChainTopics;
+    if (!limit) return false;
+    return this.onChainTopicCount >= limit;
   }
 
   /**
@@ -88,14 +101,35 @@ export class TestnetIntegration {
   /**
    * Create an HCS topic on the testnet.
    * Used for agent registration, skill publishing, and task channels.
+   * Respects maxOnChainTopics budget limit — falls back to mock when reached.
    */
   async createTopic(memo: string): Promise<TestnetTopicRecord> {
-    const result: TopicInfo = await this.client.createTopic(memo);
+    const withinLimit = this.isLive() && !this.isOnChainLimitReached();
+
+    let result: TopicInfo;
+    let onChain: boolean;
+
+    if (withinLimit) {
+      // Create real on-chain topic
+      result = await this.client.createTopic(memo);
+      onChain = true;
+      this.onChainTopicCount++;
+    } else {
+      // Generate mock topic ID (budget limit reached or not live)
+      const mockCounter = this.topics.length + 1;
+      result = {
+        topicId: `0.0.${8000000 + mockCounter}`,
+        memo,
+        createdAt: new Date().toISOString(),
+      };
+      onChain = false;
+    }
+
     const record: TestnetTopicRecord = {
       topicId: result.topicId,
       memo: result.memo,
       createdAt: result.createdAt,
-      onChain: this.isLive(),
+      onChain,
     };
     this.topics.push(record);
     return record;
@@ -104,16 +138,37 @@ export class TestnetIntegration {
   /**
    * Submit a message to an HCS topic on the testnet.
    * Used for agent registration messages, task specs, and profile updates.
+   * Only submits on-chain when the topic is a real Hedera topic (not a mock ID).
    */
   async submitMessage(topicId: string, content: string | Record<string, unknown>): Promise<TestnetMessageRecord> {
     const contentStr = typeof content === 'string' ? content : JSON.stringify(content);
-    const result: MessageSubmitResult = await this.client.submitMessage(topicId, content);
+
+    // Check if topicId is a mock topic (generated locally, not real Hedera)
+    const isMockTopic = topicId.startsWith('0.0.800') || !this.isLive();
+
+    let result: MessageSubmitResult;
+    let onChain: boolean;
+
+    if (!isMockTopic && this.isLive()) {
+      result = await this.client.submitMessage(topicId, content);
+      onChain = true;
+    } else {
+      // Mock submit for non-real topics
+      const seq = this.messages.filter(m => m.topicId === topicId).length + 1;
+      result = {
+        topicId,
+        sequenceNumber: seq,
+        timestamp: new Date().toISOString(),
+      };
+      onChain = false;
+    }
+
     const record: TestnetMessageRecord = {
       topicId: result.topicId,
       sequenceNumber: result.sequenceNumber,
       timestamp: result.timestamp,
       content: contentStr,
-      onChain: this.isLive(),
+      onChain,
     };
     this.messages.push(record);
     return record;

@@ -64,7 +64,7 @@ describe('ChatAgent', () => {
   describe('getAvailableTools', () => {
     test('should return all tools', () => {
       const tools = agent.getAvailableTools();
-      expect(tools).toHaveLength(13);
+      expect(tools).toHaveLength(14);
       expect(tools).toContain('register_agent');
       expect(tools).toContain('find_registrations');
       expect(tools).toContain('vector_search');

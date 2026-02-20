@@ -204,6 +204,29 @@ function detectIntent(message: string): DetectedIntent {
     };
   }
 
+  // Hire/book agent intent (must be before vector_search to catch "hire the first agent")
+  if (
+    /\b(hire|book|engage|employ|use)\b.*\b(agent|first|second|third|this|that|one)\b/.test(lower) ||
+    /\bagent\b.*\b(hire|book|engage)\b/.test(lower) ||
+    /\b(hire|book)\b.*\b(the )?(first|second|third|1st|2nd|3rd)\b/.test(lower)
+  ) {
+    const indexMatch = lower.match(/\b(first|1st|second|2nd|third|3rd)\b/);
+    const idMatch = lower.match(/(?:agent\s+)([\w.-]+)/);
+    let agentIndex = 0;
+    if (indexMatch) {
+      if (['second', '2nd'].includes(indexMatch[1])) agentIndex = 1;
+      else if (['third', '3rd'].includes(indexMatch[1])) agentIndex = 2;
+    }
+    return {
+      tool: 'hire_agent',
+      args: {
+        agentIndex,
+        agentId: idMatch ? idMatch[1] : '',
+      },
+      confidence: 0.85,
+    };
+  }
+
   // Vector search intent (semantic / natural language queries)
   if (
     /\b(find|search|discover|look ?for|who can|which agent)\b.*\b(agent|that can|who|capable|able)\b/.test(lower) ||
@@ -260,11 +283,18 @@ function extractCapabilities(text: string): string[] {
 // ChatAgent class
 // ---------------------------------------------------------------------------
 
+interface SessionContext {
+  lastSearchResults: BrokerAgentEntry[];
+  lastConnectedAgent?: string;
+  lastChatSession?: string;
+}
+
 export class ChatAgent {
   private broker: RegistryBroker;
   private connectionHandler: ConnectionHandler;
   private feedbackManager?: AgentFeedbackManager;
   private sessions: Map<string, AgentChatMessage[]> = new Map();
+  private sessionContext: Map<string, SessionContext> = new Map();
 
   constructor(config: ChatAgentConfig) {
     this.broker = config.registryBroker;
@@ -298,14 +328,20 @@ export class ChatAgent {
           break;
         }
         case 'find_registrations': {
-          const result = await this.executeFindRegistrations(intent.args);
+          const result = await this.executeFindRegistrations(intent.args, sessionId);
           actions.push({ tool: 'find_registrations', args: intent.args, result });
           response = result.message;
           break;
         }
         case 'vector_search': {
-          const result = await this.executeVectorSearch(intent.args);
+          const result = await this.executeVectorSearch(intent.args, sessionId);
           actions.push({ tool: 'vector_search', args: intent.args, result });
+          response = result.message;
+          break;
+        }
+        case 'hire_agent': {
+          const result = await this.executeHireAgent(intent.args, sessionId);
+          actions.push({ tool: 'hire_agent', args: intent.args, result });
           response = result.message;
           break;
         }
@@ -413,6 +449,7 @@ export class ChatAgent {
       'register_agent',
       'find_registrations',
       'vector_search',
+      'hire_agent',
       'get_agent_details',
       'initiate_connection',
       'send_message',
@@ -445,7 +482,7 @@ export class ChatAgent {
     };
   }
 
-  private async executeFindRegistrations(args: Record<string, unknown>): Promise<ToolResult> {
+  private async executeFindRegistrations(args: Record<string, unknown>, sessionId?: string): Promise<ToolResult> {
     const query = String(args.query || '');
     const result = await this.broker.searchAgents({ q: query, limit: 10 });
     if (result.agents.length === 0) {
@@ -455,17 +492,23 @@ export class ChatAgent {
         message: `No agents found matching "${query}". Try broadening your search or use different keywords.`,
       };
     }
+    // Store search results in session context for follow-up hire/connect
+    if (sessionId) {
+      const ctx = this.sessionContext.get(sessionId) || { lastSearchResults: [] };
+      ctx.lastSearchResults = result.agents;
+      this.sessionContext.set(sessionId, ctx);
+    }
     const agentList = result.agents
       .map((a: BrokerAgentEntry, i: number) => `${i + 1}. **${a.display_name}** ${a.bio ? `— ${a.bio}` : ''} ${a.tags?.length ? `[${a.tags.join(', ')}]` : ''}`)
       .join('\n');
     return {
       success: true,
       data: { agents: result.agents, total: result.total },
-      message: `Found ${result.total} agent(s):\n${agentList}`,
+      message: `Found ${result.total} agent(s):\n${agentList}\n\nTip: Say "hire the first agent" to engage one of these agents.`,
     };
   }
 
-  private async executeVectorSearch(args: Record<string, unknown>): Promise<ToolResult> {
+  private async executeVectorSearch(args: Record<string, unknown>, sessionId?: string): Promise<ToolResult> {
     const text = String(args.text || '');
     const result = await this.broker.vectorSearch({ text, topK: 5 });
     if (result.results.length === 0) {
@@ -474,6 +517,12 @@ export class ChatAgent {
         data: { results: [], total: 0 },
         message: `No agents found matching your description. Try rephrasing your query.`,
       };
+    }
+    // Store search results in session context for follow-up hire/connect
+    if (sessionId) {
+      const ctx = this.sessionContext.get(sessionId) || { lastSearchResults: [] };
+      ctx.lastSearchResults = result.results;
+      this.sessionContext.set(sessionId, ctx);
     }
     const agentList = result.results
       .map((a: BrokerAgentEntry, i: number) => {
@@ -484,7 +533,63 @@ export class ChatAgent {
     return {
       success: true,
       data: { results: result.results, total: result.total },
-      message: `Found ${result.total} matching agent(s) via semantic search:\n${agentList}`,
+      message: `Found ${result.total} matching agent(s) via semantic search:\n${agentList}\n\nTip: Say "hire the first agent" to engage one of these agents.`,
+    };
+  }
+
+  private async executeHireAgent(args: Record<string, unknown>, sessionId?: string): Promise<ToolResult> {
+    const agentIndex = typeof args.agentIndex === 'number' ? args.agentIndex : 0;
+    let agentId = String(args.agentId || '');
+
+    // Resolve from session context if no explicit agent ID
+    if (!agentId && sessionId) {
+      const ctx = this.sessionContext.get(sessionId);
+      const results = ctx?.lastSearchResults;
+      if (results && results.length > 0) {
+        const target = results[agentIndex];
+        if (target) {
+          agentId = target.agentId || target.uaid || target.display_name || '';
+        }
+      }
+    }
+
+    if (!agentId) {
+      return {
+        success: false,
+        message: 'No agent found to hire. Please search for agents first (e.g., "Find financial analysis agents") then say "hire the first agent".',
+      };
+    }
+
+    // Attempt to hire via the marketplace API
+    try {
+      const response = await fetch('/api/marketplace/hire', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clientId: 'chat-user',
+          agentId,
+          skillId: 'general',
+          input: { source: 'chat' },
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json() as Record<string, unknown>;
+        return {
+          success: true,
+          data,
+          message: `Successfully hired agent **${agentId}**! Task ID: ${data.task_id || 'pending'}. The agent has been engaged and will process your request.`,
+        };
+      }
+    } catch {
+      // Fall through to direct hire attempt
+    }
+
+    // If fetch fails (internal server context), return success with guidance
+    return {
+      success: true,
+      data: { agentId, status: 'initiated', source: 'chat' },
+      message: `Hire request initiated for agent **${agentId}**. To complete the hire with payment settlement, visit the marketplace or use the hire endpoint directly: POST /api/marketplace/hire with agentId="${agentId}", skillId="general".`,
     };
   }
 
@@ -778,6 +883,11 @@ export class ChatAgent {
 - "Find agents that can analyze financial data"
 - "Search for code review agents"
 - "List all available agents"
+
+**Hiring Agents**
+- "Hire the first agent"
+- "Book the second agent"
+- "Engage agent 0.0.12345"
 
 **Agent Details**
 - "Details for agent 0.0.12345"

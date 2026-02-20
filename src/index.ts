@@ -41,10 +41,13 @@ export function createApp() {
   const config = loadConfig();
 
   // Initialize testnet integration (uses real HCS when credentials available)
+  // maxOnChainTopics: 7 agents × 4 topics each (3 HCS-10 + 1 HCS-19) = 28
+  // This keeps HBAR spend under ~1.5 HBAR while proving real on-chain activity
   const testnetIntegration = new TestnetIntegration({
     accountId: config.hedera.accountId,
     privateKey: config.hedera.privateKey,
     network: config.hedera.network,
+    maxOnChainTopics: 28,
   });
 
   const testnetStatus = testnetIntegration.getStatus();
@@ -62,7 +65,7 @@ export function createApp() {
     accountId: config.hedera.accountId,
     privateKey: config.hedera.privateKey,
     network: config.hedera.network,
-  });
+  }, testnetIntegration);
 
   const hcs14 = new HCS14IdentityManager({
     accountId: config.hedera.accountId,
@@ -86,7 +89,7 @@ export function createApp() {
     accountId: config.hedera.accountId,
     privateKey: config.hedera.privateKey,
     network: config.hedera.network,
-  });
+  }, testnetIntegration);
 
   const hcs20 = new HCS20PointsTracker({
     accountId: config.hedera.accountId,

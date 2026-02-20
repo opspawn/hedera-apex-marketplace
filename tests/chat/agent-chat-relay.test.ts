@@ -61,9 +61,9 @@ describe('ChatAgent Chat Relay Tools', () => {
   // ----- Tool listing -----
 
   describe('getAvailableTools', () => {
-    test('should include 13 tools (8 original + 3 relay + 1 skills + 1 trust)', () => {
+    test('should include 14 tools (8 original + 3 relay + 1 skills + 1 trust + 1 hire)', () => {
       const tools = agent.getAvailableTools();
-      expect(tools).toHaveLength(13);
+      expect(tools).toHaveLength(14);
     });
 
     test('should include create_chat_session tool', () => {

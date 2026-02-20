@@ -154,9 +154,9 @@ describe('Sprint 32: Chat UX Enhancement', () => {
       expect(tools).toContain('get_trust_scores');
     });
 
-    test('should have 13 tools total', () => {
+    test('should have 14 tools total', () => {
       const tools = agent.getAvailableTools();
-      expect(tools).toHaveLength(13);
+      expect(tools).toHaveLength(14);
     });
   });
 

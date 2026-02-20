@@ -764,9 +764,9 @@ function getChatHTML(): string {
         '<h2>Hedera Agent Marketplace Chat</h2>' +
         '<p>Chat with the marketplace agent using natural language &mdash; register agents, discover capabilities, connect via HCS-10, and exchange messages.</p>' +
         '<div class="suggestions" id="suggestions">' +
-          '<div class="suggestion" onclick="sendSuggestion(this)"><div class="suggestion-label">Discover</div>What agents are available?</div>' +
+          '<div class="suggestion" onclick="sendSuggestion(this)"><div class="suggestion-label">Search</div>Find agents for financial data analysis</div>' +
           '<div class="suggestion" onclick="sendSuggestion(this)"><div class="suggestion-label">About</div>What is this marketplace?</div>' +
-          '<div class="suggestion" onclick="sendSuggestion(this)"><div class="suggestion-label">Guide</div>How do I hire an agent?</div>' +
+          '<div class="suggestion" onclick="sendSuggestion(this)"><div class="suggestion-label">Hire</div>Hire the first agent</div>' +
           '<div class="suggestion" onclick="sendSuggestion(this)"><div class="suggestion-label">Trust</div>Show me trust scores</div>' +
           '<div class="suggestion" onclick="sendSuggestion(this)"><div class="suggestion-label">Standards</div>What standards do you support?</div>' +
           '<div class="suggestion" onclick="sendSuggestion(this)"><div class="suggestion-label">Status</div>Check protocol reachability</div>' +
@@ -781,6 +781,12 @@ function getChatHTML(): string {
         text = text.replace(label.textContent || label.innerText, '').trim();
       }
       document.getElementById('messageInput').value = text;
+      sendMessage();
+    }
+
+    function hireAgent(agentId, agentName) {
+      var msg = 'Hire agent ' + (agentId || agentName);
+      document.getElementById('messageInput').value = msg;
       sendMessage();
     }
 
@@ -829,7 +835,17 @@ function getChatHTML(): string {
             addMessage('agent', data.agentMessage.content, toolCalls, null, agentData);
           } else if (data.response) {
             var toolCalls2 = data.actions ? data.actions.map(function(a) { return { name: a.tool, args: a.args, output: a.result ? a.result.message : '' }; }) : null;
-            addMessage('agent', data.response, toolCalls2, null, null);
+            var agentData2 = null;
+            if (data.actions) {
+              for (var k = 0; k < data.actions.length; k++) {
+                var act2 = data.actions[k];
+                if (act2.result && act2.result.data) {
+                  if (act2.result.data.agents) agentData2 = act2.result.data.agents;
+                  else if (act2.result.data.results) agentData2 = act2.result.data.results;
+                }
+              }
+            }
+            addMessage('agent', data.response, toolCalls2, null, agentData2);
           } else if (data.error) {
             addMessage('agent', data.message || data.error, null, data.error);
           }
@@ -877,6 +893,8 @@ function getChatHTML(): string {
           var bio = ag.bio || ag.description || '';
           var tags = ag.tags || ag.capabilities || [];
           var score = ag.score ? Math.round(ag.score * 100) + '%' : (ag.reputation_score ? ag.reputation_score + '/100' : '');
+          var agId = ag.agentId || ag.uaid || ag.id || name;
+          var ordinal = j === 0 ? 'first' : j === 1 ? 'second' : 'third';
           agentCardsHTML += '<div class="chat-agent-card">';
           agentCardsHTML += '<div class="chat-agent-card-header">';
           agentCardsHTML += '<div class="chat-agent-card-avatar">&#x1F916;</div>';
@@ -892,6 +910,10 @@ function getChatHTML(): string {
             }
             agentCardsHTML += '</div>';
           }
+          agentCardsHTML += '<div class="chat-agent-card-actions" style="margin-top:0.5rem;display:flex;gap:0.5rem;">';
+          agentCardsHTML += '<button class="chat-hire-btn" onclick="hireAgent(' + JSON.stringify(escapeHtml(agId)) + ',' + JSON.stringify(escapeHtml(name)) + ')" style="padding:0.25rem 0.75rem;border-radius:6px;border:1px solid rgba(0,212,255,0.4);background:rgba(0,212,255,0.1);color:#00d4ff;font-size:0.72rem;cursor:pointer;transition:all 0.2s;" onmouseover="this.style.background=\'rgba(0,212,255,0.2)\'" onmouseout="this.style.background=\'rgba(0,212,255,0.1)\'">&#x1F91D; Hire</button>';
+          agentCardsHTML += '<button class="chat-details-btn" onclick="sendSuggestion({textContent:\'Tell me more about the ' + escapeHtml(ordinal) + ' agent\'})" style="padding:0.25rem 0.75rem;border-radius:6px;border:1px solid rgba(148,163,184,0.2);background:rgba(148,163,184,0.05);color:#94a3b8;font-size:0.72rem;cursor:pointer;transition:all 0.2s;">Details</button>';
+          agentCardsHTML += '</div>';
           agentCardsHTML += '</div>';
         }
         agentCardsHTML += '</div>';
